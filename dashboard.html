@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Hispafly EFB | Pilot Dashboard</title>
+    <style>
+        :root {
+            --color-spain-red: #c1121f;
+            --color-spain-yellow: #ffc107;
+            --color-dark-brown: #3a2413;
+            --color-light-cream: #f2e9d8;
+            --color-white: #ffffff;
+            --shadow-soft: 0 4px 16px rgba(0,0,0,0.15);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        body {
+            min-height: 100vh;
+            background: linear-gradient(rgba(58, 36, 19, 0.88), rgba(58, 36, 19, 0.94)), url("aircraft-bg.jpg");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            padding: 20px 15px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .header-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+        .logo-small {
+            height: 50px;
+        }
+        .logout-btn {
+            padding: 9px 18px;
+            border: 2px solid var(--color-spain-red);
+            background: transparent;
+            color: #fff;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.25s ease;
+        }
+        .logout-btn:hover {
+            background: var(--color-spain-red);
+        }
+        .card {
+            background: var(--color-light-cream);
+            border-radius: 14px;
+            padding: 24px;
+            margin-bottom: 18px;
+            box-shadow: var(--shadow-soft);
+        }
+        .card h2 {
+            color: var(--color-dark-brown);
+            font-size: 20px;
+            margin-bottom: 12px;
+            border-left: 4px solid var(--color-spain-red);
+            padding-left: 10px;
+        }
+        .card p {
+            color: #443322;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+        .func-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 15px;
+        }
+        .func-btn {
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(90deg, var(--color-spain-red), #e69500);
+            color: #fff;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.2s ease;
+        }
+        .func-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(193,18,31,0.25);
+        }
+        .divider-line {
+            height: 3px;
+            background: linear-gradient(90deg, var(--color-spain-red), var(--color-spain-yellow), var(--color-spain-red));
+            border-radius: 2px;
+            margin: 20px 0;
+        }
+        footer {
+            text-align: center;
+            color: rgba(255,255,255,0.75);
+            font-size: 12px;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-bar">
+            <img class="logo-small" src="logo.png" alt="Hispafly Logo">
+            <button class="logout-btn" onclick="logout()">LOG OUT</button>
+        </div>
+
+        <div class="card">
+            <h2>Pilot Profile</h2>
+            <p id="pilotName">Loading...</p>
+            <p id="pilotEmail">Loading...</p>
+            <p id="flightHours">Loading...</p>
+        </div>
+
+        <div class="divider-line"></div>
+
+        <div class="card">
+            <h2>Upcoming Booked Flights</h2>
+            <div id="flightList">Loading your flight schedule...</div>
+        </div>
+
+        <div class="card">
+            <h2>EFB Flight Tools</h2>
+            <div class="func-grid">
+                <button class="func-btn" onclick="alert('Dispatch Module Coming Soon')">FLIGHT DISPATCH</button>
+                <button class="func-btn" onclick="alert('PIREP Module Coming Soon')">SUBMIT PIREP</button>
+                <button class="func-btn" onclick="alert('Logbook Module Coming Soon')">FLIGHT LOGBOOK</button>
+                <button class="func-btn" onclick="alert('Profile Settings Coming Soon')">PILOT SETTINGS</button>
+            </div>
+        </div>
+
+        <footer>
+            © 2026 Hispafly Virtual Airline — Mobile EFB System
+        </footer>
+    </div>
+
+    <script>
+        const token = localStorage.getItem("vamsys_token");
+        const API_BASE = "https://api.vamsys.co/v1";
+
+        // No token = back to login
+        if (!token) {
+            window.location.href = "index.html";
+        }
+
+        // Load Pilot Basic Info
+        fetch(`${API_BASE}/identity/basic`, {
+            headers: { Authorization: `Bearer ${token}` }
+        }).then(r=>r.json()).then(data=>{
+            document.getElementById("pilotName").innerText = "Pilot Name: " + data.name;
+            document.getElementById("pilotEmail").innerText = "Email: " + data.email;
+        })
+
+        // Load Pilot Stats / Hours
+        fetch(`${API_BASE}/pilot/read`, {
+            headers: { Authorization: `Bearer ${token}` }
+        }).then(r=>r.json()).then(data=>{
+            document.getElementById("flightHours").innerText = "Total Flight Hours: " + data.total_hours;
+        })
+
+        // Load Booked Flights
+        fetch(`${API_BASE}/flights/read`, {
+            headers: { Authorization: `Bearer ${token}` }
+        }).then(r=>r.json()).then(flights=>{
+            const box = document.getElementById("flightList");
+            if (!flights || flights.length === 0) {
+                box.innerText = "No upcoming booked flights.";
+                return;
+            }
+            box.innerHTML = "";
+            flights.forEach(f=>{
+                box.innerHTML += `<p><strong>${f.flight_number}</strong> | ${f.departure} → ${f.arrival}</p>`;
+            });
+        })
+
+        // Logout function
+        function logout(){
+            localStorage.removeItem("vamsys_token");
+            sessionStorage.removeItem("code_verifier");
+            window.location.href = "index.html";
+        }
+    </script>
+</body>
+</html>
