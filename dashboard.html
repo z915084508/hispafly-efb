@@ -175,36 +175,76 @@
     </div>
 
     <script>
-        const API_BASE = "/api/token-proxy";
         const API_ROOT = "https://vamsys.io/api/v3/pilot";
         let accessToken = localStorage.getItem("vamsys_token");
 
         if (!accessToken) {
             window.location.href = "index.html";
         }
+
         const authHeader = {
             "Authorization": `Bearer ${accessToken}`,
-            "Content-Type": "application/json"
+            "Accept": "application/json"
         };
 
-        window.addEventListener("DOMContentLoaded", ()=>{
+        window.addEventListener("DOMContentLoaded", () => {
             loadPilotProfile();
             loadBookings();
             loadPireps();
         });
 
-        // 飞行员资料
+        function buildApiUrl(path, params = {}) {
+            const url = new URL(`${API_ROOT}${path}`);
+            Object.entries(params).forEach(([key, value]) => {
+                if (value !== undefined && value !== null && value !== "") {
+                    url.searchParams.set(key, value);
+                }
+            });
+            return url.toString();
+        }
+
+        async function fetchPilotJson(path, params = {}) {
+            const url = buildApiUrl(path, params);
+            const res = await fetch(url, { headers: authHeader });
+            const text = await res.text();
+            let json;
+
+            try {
+                json = JSON.parse(text);
+            } catch (err) {
+                const preview = text.replace(/\s+/g, " ").slice(0, 180) || "empty response";
+                throw new Error(`VAMSYS returned non-JSON for ${path} (HTTP ${res.status}): ${preview}`);
+            }
+
+            if (!res.ok) {
+                const msg = json.message || json.error || JSON.stringify(json).slice(0, 180);
+                throw new Error(`VAMSYS ${path} failed (HTTP ${res.status}): ${msg}`);
+            }
+
+            return json;
+        }
+
+        function formatValue(value, fallback = "N/A") {
+            return value === undefined || value === null || value === "" ? fallback : value;
+        }
+
+        function formatDate(value) {
+            if (!value) return "N/A";
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+        }
+
         async function loadPilotProfile() {
             try {
-                const res = await fetch(`${API_ROOT}/user`, {headers:authHeader});
-                const json = await res.json();
-                const u = json.data;
+                const json = await fetchPilotJson("/user");
+                const u = json.data || {};
+                const networks = u.networks || {};
                 const html = `
-                    <p><strong>Full Name:</strong> ${u.first_name} ${u.last_name}</p>
-                    <p><strong>Email:</strong> ${u.email}</p>
-                    <p><strong>VATSIM ID:</strong> ${u.networks?.vatsim_id || "N/A"}</p>
-                    <p><strong>IVAO ID:</strong> ${u.networks?.ivao_id || "N/A"}</p>
-                    <p><strong>Pilot ID:</strong> ${u.id}</p>
+                    <p><strong>Full Name:</strong> ${formatValue(u.first_name, "")} ${formatValue(u.last_name, "")}</p>
+                    <p><strong>Email:</strong> ${formatValue(u.email)}</p>
+                    <p><strong>VATSIM ID:</strong> ${formatValue(networks.vatsim_id)}</p>
+                    <p><strong>IVAO ID:</strong> ${formatValue(networks.ivao_id)}</p>
+                    <p><strong>Pilot ID:</strong> ${formatValue(u.id)}</p>
                 `;
                 document.getElementById("profileBox").innerHTML = html;
             } catch (err) {
@@ -212,24 +252,27 @@
             }
         }
 
-        // 预订航班
         async function loadBookings() {
             try {
-                const res = await fetch(`${API_ROOT}/bookings?sort=-id&page[size]=10`, {headers:authHeader});
-                const json = await res.json();
+                const json = await fetchPilotJson("/bookings", {
+                    sort: "-id",
+                    "page[size]": "10",
+                    "filter[status]": "current"
+                });
                 const list = json.data || [];
-                if(list.length === 0) {
+                if (list.length === 0) {
                     document.getElementById("bookingBox").innerHTML = "<p>No active flight bookings</p>";
                     return;
                 }
+
                 let html = "";
-                list.forEach(book=>{
+                list.forEach(book => {
                     html += `
                     <div class="item-block">
-                        <p><strong>${book.flight_number} ${book.callsign || ""}</strong></p>
-                        <p>${book.departure_id} → ${book.arrival_id}</p>
-                        <p>Dep: ${new Date(book.departure_time).toLocaleString()}</p>
-                        <p>Network: ${book.network}</p>
+                        <p><strong>${formatValue(book.flight_number, "Flight")} ${formatValue(book.callsign, "")}</strong></p>
+                        <p>${formatValue(book.departure_id)} → ${formatValue(book.arrival_id)}</p>
+                        <p>Dep: ${formatDate(book.departure_time)}</p>
+                        <p>Network: ${formatValue(book.network)}</p>
                     </div>
                     `;
                 });
@@ -239,24 +282,26 @@
             }
         }
 
-        // PIREP列表
         async function loadPireps() {
             try {
-                const res = await fetch(`${API_ROOT}/pireps?sort=-id&page[size]=10`, {headers:authHeader});
-                const json = await res.json();
+                const json = await fetchPilotJson("/pireps", {
+                    sort: "-id",
+                    "page[size]": "10"
+                });
                 const list = json.data || [];
-                if(list.length === 0) {
+                if (list.length === 0) {
                     document.getElementById("pirepBox").innerHTML = "<p>No submitted PIREPs yet</p>";
                     return;
                 }
+
                 let html = "";
-                list.forEach(p=>{
+                list.forEach(p => {
                     html += `
                     <div class="item-block">
-                        <p><strong>${p.flight_number} | ${p.status}</strong></p>
-                        <p>${p.departure_id} → ${p.arrival_id}</p>
-                        <p>Flight Time: ${p.flight_time} mins | Fuel Used: ${p.fuel_used}</p>
-                        <p>Landing Rate: ${p.landing_rate}</p>
+                        <p><strong>${formatValue(p.flight_number, "Flight")} | ${formatValue(p.status)}</strong></p>
+                        <p>${formatValue(p.departure_id)} → ${formatValue(p.arrival_id)}</p>
+                        <p>Flight Time: ${formatValue(p.flight_time, 0)} mins | Fuel Used: ${formatValue(p.fuel_used, 0)}</p>
+                        <p>Landing Rate: ${formatValue(p.landing_rate)}</p>
                         <button onclick="loadFlightMap(${p.id})" style="margin-top:6px;padding:4px 10px;cursor:pointer;">View Flight Map</button>
                     </div>
                     `;
@@ -267,13 +312,11 @@
             }
         }
 
-        // 航线地图数据
         async function loadFlightMap(pirepId) {
             const mapBox = document.getElementById("mapContainer");
             mapBox.innerText = "Loading flight track data...";
             try {
-                const res = await fetch(`${API_ROOT}/pireps/${pirepId}/profile`, {headers:authHeader});
-                const track = await res.json();
+                const track = await fetchPilotJson(`/pireps/${pirepId}/profile`);
                 const altPoints = track.data?.altitude || [];
                 const groundPoints = track.data?.groundspeed || [];
                 const annots = track.data?.annotations || [];
@@ -291,13 +334,14 @@
             }
         }
 
-        // 登出
         function logout(){
             localStorage.removeItem("vamsys_token");
-            sessionStorage.removeItem("code_verifier");
-            sessionStorage.removeItem("oauth_state");
-            localStorage.removeItem("code_verifier");
-            localStorage.removeItem("oauth_state");
+            sessionStorage.removeItem("pkce_v");
+            sessionStorage.removeItem("pkce_s");
+            sessionStorage.removeItem("oauth_redirect_uri");
+            localStorage.removeItem("pkce_v");
+            localStorage.removeItem("pkce_s");
+            localStorage.removeItem("oauth_redirect_uri");
             window.location.href = "index.html";
         }
     </script>
