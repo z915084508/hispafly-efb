@@ -124,27 +124,31 @@
         const SCOPE_LIST = "identity:basic identity:networks pilot:read pilot:write flights:read flights:write";
         // ===================================================================
 
-        // Generate random CSRF state (VAMSYS required parameter)
-        function generateState() {
-            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-            let state = "";
-            for (let i = 0; i < 32; i++) {
-                state += chars[Math.floor(Math.random() * chars.length)];
-            }
-            sessionStorage.setItem("oauth_state", state);
-            return state;
-        }
+        // 生成随机state CSRF串
+function generateState() {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let state = "";
+    for (let i = 0; i < 32; i++) {
+        state += chars[Math.floor(Math.random() * chars.length)];
+    }
+    // 双存储，防止无痕清空session
+    sessionStorage.setItem("oauth_state", state);
+    localStorage.setItem("oauth_state", state);
+    return state;
+}
 
-        // Generate PKCE Code Verifier & Code Challenge SHA256 S256
-        function generateCodeVerifier() {
-            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
-            let verifier = "";
-            for (let i = 0; i < 64; i++) {
-                verifier += chars[Math.floor(Math.random() * chars.length)];
-            }
-            sessionStorage.setItem("code_verifier", verifier);
-            return verifier;
-        }
+// 生成PKCE Code Verifier & Code Challenge SHA256 S256
+function generateCodeVerifier() {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+    let verifier = "";
+    for (let i = 0; i < 64; i++) {
+        verifier += chars[Math.floor(Math.random() * chars.length)];
+    }
+    // 双存储
+    sessionStorage.setItem("code_verifier", verifier);
+    localStorage.setItem("code_verifier", verifier);
+    return verifier;
+}
 
         async function generateCodeChallenge(verifier) {
             const encoder = new TextEncoder();
