@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>Hispafly EFB | Pilot Dashboard</title>
+    <title>HPF EFB | Pilot Dashboard</title>
     <style>
         :root {
             --color-spain-red: #c1121f;
@@ -28,7 +28,7 @@
             padding: 20px 15px;
         }
         .container {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
         }
         .header-bar {
@@ -36,9 +36,21 @@
             align-items: center;
             justify-content: space-between;
             margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap:12px;
+        }
+        .logo-block {
+            display:flex;
+            align-items:center;
+            gap:10px;
         }
         .logo-small {
             height: 50px;
+        }
+        .header-title {
+            color:#fff;
+            font-size:22px;
+            font-weight:bold;
         }
         .logout-btn {
             padding: 9px 18px;
@@ -72,32 +84,37 @@
             font-size: 15px;
             line-height: 1.7;
         }
-        .func-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-top: 15px;
-        }
-        .func-btn {
-            padding: 14px;
-            border: none;
-            border-radius: 10px;
-            background: linear-gradient(90deg, var(--color-spain-red), #e69500);
-            color: #fff;
-            font-weight: 600;
-            font-size: 15px;
-            cursor: pointer;
-            transition: 0.2s ease;
-        }
-        .func-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(193,18,31,0.25);
-        }
         .divider-line {
             height: 3px;
             background: linear-gradient(90deg, var(--color-spain-red), var(--color-spain-yellow), var(--color-spain-red));
             border-radius: 2px;
             margin: 20px 0;
+        }
+        .grid-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap:16px;
+        }
+        @media (max-width:700px) {
+            .grid-row {
+                grid-template-columns:1fr;
+            }
+        }
+        .item-block {
+            background:#fff;
+            padding:14px;
+            border-radius:10px;
+            margin:8px 0;
+        }
+        .map-box {
+            width:100%;
+            height:280px;
+            background:#ddd;
+            border-radius:10px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            color:#333;
         }
         footer {
             text-align: center;
@@ -105,87 +122,186 @@
             font-size: 12px;
             margin-top: 30px;
         }
+        .tip-text {
+            color:#777;
+            font-style:italic;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header-bar">
-            <img class="logo-small" src="logo.png" alt="Hispafly Logo">
+            <div class="logo-block">
+                <img class="logo-small" src="logo.png" alt="Hispafly Logo">
+                <span class="header-title">HPF EFB</span>
+            </div>
             <button class="logout-btn" onclick="logout()">LOG OUT</button>
         </div>
 
+        <!-- 飞行员资料 -->
         <div class="card">
             <h2>Pilot Profile</h2>
-            <p id="pilotName">Loading...</p>
-            <p id="pilotEmail">Loading...</p>
-            <p id="flightHours">Loading...</p>
+            <div id="profileBox">
+                <p class="tip-text">Loading pilot data...</p>
+            </div>
         </div>
 
         <div class="divider-line"></div>
 
-        <div class="card">
-            <h2>Upcoming Booked Flights</h2>
-            <div id="flightList">Loading your flight schedule...</div>
+        <div class="grid-row">
+            <!-- 预订航班 Bookings -->
+            <div class="card">
+                <h2>My Flight Bookings</h2>
+                <div id="bookingBox">
+                    <p class="tip-text">Loading bookings...</p>
+                </div>
+            </div>
+            <!-- 飞行地图 Flight Map -->
+            <div class="card">
+                <h2>Flight Track Map</h2>
+                <div class="map-box" id="mapContainer">
+                    Select a PIREP to view flight route track
+                </div>
+            </div>
         </div>
 
+        <!-- PIREP 飞行报告 -->
         <div class="card">
-            <h2>EFB Flight Tools</h2>
-            <div class="func-grid">
-                <button class="func-btn" onclick="alert('Dispatch Module Coming Soon')">FLIGHT DISPATCH</button>
-                <button class="func-btn" onclick="alert('PIREP Module Coming Soon')">SUBMIT PIREP</button>
-                <button class="func-btn" onclick="alert('Logbook Module Coming Soon')">FLIGHT LOGBOOK</button>
-                <button class="func-btn" onclick="alert('Profile Settings Coming Soon')">PILOT SETTINGS</button>
+            <h2>My PIREP Logbook</h2>
+            <div id="pirepBox">
+                <p class="tip-text">Loading flight reports...</p>
             </div>
         </div>
 
         <footer>
-            © 2026 Hispafly Virtual Airline — Mobile EFB System
+            © 2026 Hispafly Virtual Airline — HPF EFB System
         </footer>
     </div>
 
     <script>
-        const token = localStorage.getItem("vamsys_token");
-        const API_BASE = "https://api.vamsys.co/v1";
+        // API 基础配置（匹配官方文档v3）
+        const API_BASE = "https://vamsys.io/api/v3/pilot";
+        let accessToken = localStorage.getItem("vamsys_token");
 
-        // No token = back to login
-        if (!token) {
+        // 无Token返回登录页
+        if (!accessToken) {
             window.location.href = "index.html";
         }
+        const authHeader = {
+            "Authorization": `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+        };
 
-        // Load Pilot Basic Info
-        fetch(`${API_BASE}/identity/basic`, {
-            headers: { Authorization: `Bearer ${token}` }
-        }).then(r=>r.json()).then(data=>{
-            document.getElementById("pilotName").innerText = "Pilot Name: " + data.name;
-            document.getElementById("pilotEmail").innerText = "Email: " + data.email;
-        })
+        // 页面加载全部数据
+        window.addEventListener("DOMContentLoaded", ()=>{
+            loadPilotProfile();
+            loadBookings();
+            loadPireps();
+        });
 
-        // Load Pilot Stats / Hours
-        fetch(`${API_BASE}/pilot/read`, {
-            headers: { Authorization: `Bearer ${token}` }
-        }).then(r=>r.json()).then(data=>{
-            document.getElementById("flightHours").innerText = "Total Flight Hours: " + data.total_hours;
-        })
-
-        // Load Booked Flights
-        fetch(`${API_BASE}/flights/read`, {
-            headers: { Authorization: `Bearer ${token}` }
-        }).then(r=>r.json()).then(flights=>{
-            const box = document.getElementById("flightList");
-            if (!flights || flights.length === 0) {
-                box.innerText = "No upcoming booked flights.";
-                return;
+        // 1. 加载飞行员基础资料 /user 接口
+        async function loadPilotProfile() {
+            try {
+                const res = await fetch(`${API_BASE}/user`, {headers:authHeader});
+                const json = await res.json();
+                const u = json.data;
+                const html = `
+                    <p><strong>Full Name:</strong> ${u.first_name} ${u.last_name}</p>
+                    <p><strong>Email:</strong> ${u.email}</p>
+                    <p><strong>VATSIM ID:</strong> ${u.networks?.vatsim_id || "N/A"}</p>
+                    <p><strong>IVAO ID:</strong> ${u.networks?.ivao_id || "N/A"}</p>
+                    <p><strong>Pilot ID:</strong> ${u.id}</p>
+                `;
+                document.getElementById("profileBox").innerHTML = html;
+            } catch (err) {
+                document.getElementById("profileBox").innerHTML = `<p style="color:red">Failed to load profile: ${err.message}</p>`;
             }
-            box.innerHTML = "";
-            flights.forEach(f=>{
-                box.innerHTML += `<p><strong>${f.flight_number}</strong> | ${f.departure} → ${f.arrival}</p>`;
-            });
-        })
+        }
 
-        // Logout function
+        // 2. 加载预订航班 /bookings
+        async function loadBookings() {
+            try {
+                const res = await fetch(`${API_BASE}/bookings?sort=-id&page[size]=10`, {headers:authHeader});
+                const json = await res.json();
+                const list = json.data || [];
+                if(list.length === 0) {
+                    document.getElementById("bookingBox").innerHTML = "<p>No active flight bookings</p>";
+                    return;
+                }
+                let html = "";
+                list.forEach(book=>{
+                    html += `
+                    <div class="item-block">
+                        <p><strong>${book.flight_number} ${book.callsign || ""}</strong></p>
+                        <p>${book.departure_id} → ${book.arrival_id}</p>
+                        <p>Dep: ${new Date(book.departure_time).toLocaleString()}</p>
+                        <p>Network: ${book.network}</p>
+                    </div>
+                    `;
+                });
+                document.getElementById("bookingBox").innerHTML = html;
+            } catch (err) {
+                document.getElementById("bookingBox").innerHTML = `<p style="color:red">Load bookings error: ${err.message}</p>`;
+            }
+        }
+
+        // 3. 加载PIREP飞行报告 /pireps
+        async function loadPireps() {
+            try {
+                const res = await fetch(`${API_BASE}/pireps?sort=-id&page[size]=10`, {headers:authHeader});
+                const json = await res.json();
+                const list = json.data || [];
+                if(list.length === 0) {
+                    document.getElementById("pirepBox").innerHTML = "<p>No submitted PIREPs yet</p>";
+                    return;
+                }
+                let html = "";
+                list.forEach(p=>{
+                    html += `
+                    <div class="item-block">
+                        <p><strong>${p.flight_number} | ${p.status}</strong></p>
+                        <p>${p.departure_id} → ${p.arrival_id}</p>
+                        <p>Flight Time: ${p.flight_time} mins | Fuel Used: ${p.fuel_used}</p>
+                        <p>Landing Rate: ${p.landing_rate}</p>
+                        <button onclick="loadFlightMap(${p.id})" style="margin-top:6px;padding:4px 10px;cursor:pointer;">View Flight Map</button>
+                    </div>
+                    `;
+                });
+                document.getElementById("pirepBox").innerHTML = html;
+            } catch (err) {
+                document.getElementById("pirepBox").innerHTML = `<p style="color:red">Load PIREPs error: ${err.message}</p>`;
+            }
+        }
+
+        // 4. 加载飞行轨迹地图数据 /pireps/{id}/profile
+        async function loadFlightMap(pirepId) {
+            const mapBox = document.getElementById("mapContainer");
+            mapBox.innerText = "Loading flight track data...";
+            try {
+                const res = await fetch(`${API_BASE}/pireps/${pirepId}/profile`, {headers:authHeader});
+                const track = await res.json();
+                const altPoints = track.data?.altitude || [];
+                const groundPoints = track.data?.groundspeed || [];
+                const annots = track.data?.annotations || [];
+                mapBox.innerHTML = `
+                    <div style="text-align:center;">
+                        <p>Flight Track Data Loaded (PIREP #${pirepId})</p>
+                        <p>Altitude Points: ${altPoints.length}</p>
+                        <p>Groundspeed Points: ${groundPoints.length}</p>
+                        <p>Markers: ${annots.length}</p>
+                        <p class="tip-text" style="margin-top:8px;">You can integrate Leaflet/Mapbox here to render real geographic map</p>
+                    </div>
+                `;
+            } catch (err) {
+                mapBox.innerHTML = `<p style="color:red">Failed to load track: ${err.message}</p>`;
+            }
+        }
+
+        // 退出登录
         function logout(){
             localStorage.removeItem("vamsys_token");
             sessionStorage.removeItem("code_verifier");
+            sessionStorage.removeItem("oauth_state");
             window.location.href = "index.html";
         }
     </script>
