@@ -2,11 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- 手机自适应 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>Hispafly Mobile EFB | Pilot Login</title>
+    <title>Hispafly EFB - Pilot Login</title>
     <style>
-        /* 品牌配色 匹配官网 */
         :root {
             --color-spain-red: #c1121f;
             --color-spain-yellow: #ffc107;
@@ -23,7 +21,7 @@
         }
         body {
             min-height: 100vh;
-            background: linear-gradient(rgba(58, 36, 19, 0.85), rgba(58, 36, 19, 0.92)), url("https://hispafly-94hskuxui-hispafly-efb.vercel.app/aircraft-bg.jpg");
+            background: linear-gradient(rgba(58, 36, 19, 0.85), rgba(58, 36, 19, 0.92)), url("aircraft-bg.jpg");
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -33,7 +31,7 @@
             justify-content: center;
             padding: 20px;
         }
-        .efb-container {
+        .efb-card {
             background: var(--color-light-cream);
             border-radius: 14px;
             box-shadow: var(--shadow-soft);
@@ -43,77 +41,72 @@
             text-align: center;
         }
         .logo-block {
-            margin-bottom: 28px;
+            margin-bottom: 24px;
         }
         .logo-block img {
-            height: 90px;
+            height: 80px;
             object-fit: contain;
         }
         h1 {
             color: var(--color-dark-brown);
-            font-size: 26px;
-            margin-bottom: 8px;
+            font-size: 28px;
+            margin-bottom: 12px;
         }
-        .subtitle {
+        .sub-text {
             color: #55402e;
-            font-size: 15px;
-            margin-bottom: 36px;
+            font-size: 16px;
             line-height: 1.6;
+            margin-bottom: 32px;
         }
         .login-btn {
             width: 100%;
             padding: 16px;
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             background: linear-gradient(90deg, var(--color-spain-red), var(--color-spain-yellow));
             color: var(--color-white);
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.25s ease;
-            margin-bottom: 24px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
         .login-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(193, 18, 31, 0.35);
-        }
-        .info-text {
-            font-size: 13px;
-            color: #665240;
-            line-height: 1.7;
+            box-shadow: 0 6px 16px rgba(193, 18, 31, 0.25);
         }
         .divider-line {
             height: 3px;
             background: linear-gradient(90deg, var(--color-spain-red), var(--color-spain-yellow), var(--color-spain-red));
             width: 70%;
-            margin: 30px auto;
+            margin: 32px auto;
             border-radius: 2px;
         }
+        .tip-text {
+            color: #55402e;
+            font-size: 15px;
+            line-height: 1.7;
+        }
         footer {
-            margin-top: 32px;
-            color: var(--color-light-cream);
+            margin-top: 36px;
+            color: rgba(255,255,255,0.75);
             font-size: 12px;
-            opacity: 0.8;
             text-align: center;
         }
     </style>
 </head>
 <body>
-    <div class="efb-container">
-        <!-- Hispafly 官方LOGO区域 -->
+    <div class="efb-card">
         <div class="logo-block">
-            <img alt="Hispafly Logo" src="https://hispafly-94hskuxui-hispafly-efb.vercel.app/logo.png">
+            <img alt="Hispafly Logo" src="logo.png">
         </div>
-
         <h1>Hispafly Mobile EFB</h1>
-        <p class="subtitle">Virtual Airline Electronic Flight Bag<br>Login with your official VAMSYS pilot account</p>
+        <p class="sub-text">Virtual Airline Electronic Flight Bag<br>Login with your official VAMSYS pilot account</p>
 
-        <!-- VAMSYS PKCE 登录按钮 -->
-        <button class="login-btn" id="vamsysLoginBtn">Login with VAMSYS</button>
+        <button class="login-btn" id="loginBtn">Login with VAMSYS</button>
 
         <div class="divider-line"></div>
 
-        <p class="info-text">
+        <p class="tip-text">
             This EFB requires VAMSYS pilot authorization to access flight schedules, dispatch tools and flight logbook.<br>
             All pilot data is protected under our public privacy policy.
         </p>
@@ -124,45 +117,63 @@
     </footer>
 
     <script>
-        // ===================== 此处修改为你当前生效配置 =====================
-            const CLIENT_ID = "909";
-            const REDIRECT_URI = "https://hispafly-94hskuxui-hispafly-efb.vercel.app/efb-callback.html";
-            const VAMSYS_AUTH_ENDPOINT = "https://vamsys.io/oauth/authorize";
-            const SCOPE_LIST = "identity:basic identity:networks pilot:read pilot:write flights:read flights:write";
-// ===================================================================
-        // PKCE 加密工具函数
+        // ===================== VAMSYS OAuth Fixed Config =====================
+        const CLIENT_ID = "909";
+        const REDIRECT_URI = "https://hispafly-94hskuxui-hispafly-efb.vercel.app/efb-callback.html";
+        const VAMSYS_AUTH_ENDPOINT = "https://vamsys.io/oauth/authorize";
+        const SCOPE_LIST = "identity:basic identity:networks pilot:read pilot:write flights:read flights:write";
+        // ===================================================================
+
+        // Generate random CSRF state (VAMSYS required parameter)
+        function generateState() {
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            let state = "";
+            for (let i = 0; i < 32; i++) {
+                state += chars[Math.floor(Math.random() * chars.length)];
+            }
+            sessionStorage.setItem("oauth_state", state);
+            return state;
+        }
+
+        // Generate PKCE Code Verifier & Code Challenge SHA256 S256
+        function generateCodeVerifier() {
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+            let verifier = "";
+            for (let i = 0; i < 64; i++) {
+                verifier += chars[Math.floor(Math.random() * chars.length)];
+            }
+            sessionStorage.setItem("code_verifier", verifier);
+            return verifier;
+        }
+
         async function generateCodeChallenge(verifier) {
             const encoder = new TextEncoder();
-            const data = encoder.encode(verifier);
-            const sha256Hash = await crypto.subtle.digest("SHA-256", data);
-            return btoa(String.fromCharCode(...new Uint8Array(sha256Hash)))
+            const bytes = encoder.encode(verifier);
+            const sha256 = await crypto.subtle.digest("SHA-256", bytes);
+            return btoa(String.fromCharCode(...new Uint8Array(sha256)))
                 .replace(/\+/g, "-")
                 .replace(/\//g, "_")
                 .replace(/=/g, "");
         }
 
-        // 点击登录按钮触发授权跳转
-        document.getElementById("vamsysLoginBtn").addEventListener("click", async () => {
-            // 生成随机安全验证串，存入浏览器临时存储
-            const codeVerifier = crypto.randomUUID() + crypto.randomUUID();
-            sessionStorage.setItem("code_verifier", codeVerifier);
+        // Login Button Click Handler
+        document.getElementById("loginBtn").addEventListener("click", async () => {
+            const state = generateState();
+            const verifier = generateCodeVerifier();
+            const challenge = await generateCodeChallenge(verifier);
 
-            // 生成加密挑战码
-            const codeChallenge = await generateCodeChallenge(codeVerifier);
-
-            // 拼接OAuth授权跳转参数
-            const authParams = new URLSearchParams({
+            const params = new URLSearchParams({
                 response_type: "code",
                 client_id: CLIENT_ID,
                 redirect_uri: REDIRECT_URI,
-                code_challenge: codeChallenge,
-                code_challenge_method: "S256",
-                scope: SCOPE_LIST
+                scope: SCOPE_LIST,
+                state: state,
+                code_challenge: challenge,
+                code_challenge_method: "S256"
             });
 
-            // 跳转到VAMSYS官方登录授权页面
-            window.location.href = `${VAMSYS_AUTH_ENDPOINT}?${authParams.toString()}`;
-        })
+            window.location.href = `${VAMSYS_AUTH_ENDPOINT}?${params.toString()}`;
+        });
     </script>
 </body>
 </html>
