@@ -17,19 +17,21 @@
     </style>
 </head>
 <body>
-    <h2 id="msg">Verifying Login...</h2>
+    <h2 id="msg">Verifying VAMSYS Login...</h2>
     <script>
-        console.log("=== 页面脚本开始执行 ===");
+        console.log("===== Callback Script Start =====");
         const CLIENT_ID = "909";
         const REDIRECT_URI = "https://hispafly-94hskuxui-hispafly-efb.vercel.app/efb-callback.html";
+        // Vercel Serverless代理地址，规避CORS
         const TOKEN_URL = "/api/token-proxy";
         const params = new URLSearchParams(location.search);
         const code = params.get("code");
         const stateReturn = params.get("state");
-        console.log("URL携带code:", code);
-        console.log("URL携带state:", stateReturn);
 
-        // 双存储兜底读取
+        console.log("Get code from URL:", code);
+        console.log("Get state from URL:", stateReturn);
+
+        // 双存储读取
         const stateSession = sessionStorage.getItem("oauth_state");
         const stateLocal = localStorage.getItem("oauth_state");
         const verifierSession = sessionStorage.getItem("code_verifier");
@@ -37,22 +39,23 @@
         const validState = stateSession || stateLocal;
         const validVerifier = verifierSession || verifierLocal;
         const msgDom = document.getElementById("msg");
-        console.log("本地存储有效state:", validState);
-        console.log("本地存储有效verifier:", validVerifier);
 
-        // 校验1：state不匹配
+        console.log("Saved state:", validState);
+        console.log("Saved code_verifier:", validVerifier);
+
+        // 校验1 state不一致
         if (!stateReturn || stateReturn !== validState) {
-            console.error("校验失败：state 为空/不匹配");
+            console.error("Failed: State mismatch");
             msgDom.innerHTML = `Login Failed, Return to <a href="index.html">EFB Home</a>`;
         }
-        // 校验2：缺失code或verifier
+        // 校验2 缺失code/verifier
         else if (!code || !validVerifier) {
-            console.error("校验失败：缺少code 或 code_verifier");
+            console.error("Failed: Missing code or PKCE verifier");
             msgDom.innerHTML = `Login Failed, Return to <a href="index.html">EFB Home</a>`;
         }
-        // 发起后端代理交换Token
+        // 走后端代理交换token
         else {
-            console.log("校验通过，开始请求Token接口");
+            console.log("Check passed, start request token via proxy");
             fetch(TOKEN_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -64,18 +67,19 @@
                     code_verifier: validVerifier
                 })
             }).then(async res => {
-                console.log("Token接口响应状态码:", res.status);
+                console.log("Proxy response status:", res.status);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
-                console.log("成功拿到access_token");
+                console.log("Get access_token success");
                 localStorage.setItem("vamsys_token", data.access_token);
                 // 清理临时缓存
                 sessionStorage.clear();
                 localStorage.removeItem("oauth_state");
                 localStorage.removeItem("code_verifier");
+                // 跳转仪表盘
                 window.location.href = "dashboard.html";
             }).catch(err => {
-                console.error("Token交换请求异常：", err);
+                console.error("Token exchange error:", err);
                 msgDom.innerHTML = `Login Failed, Return to <a href="index.html">EFB Home</a>`;
             })
         }
