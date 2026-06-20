@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EFB Callback</title>
+</head>
+<body style="text-align:center;margin-top:100px;font-family:Arial;">
+    <h2>Verifying VAMSYS Login...</h2>
+    <p>Please wait, redirecting to your flight dashboard</p>
+
+    <script>
+        const CLIENT_ID = "粘贴你的Client ID";
+        const REDIRECT_URI = "https://xxx-hispafly-efb.vercel.app/efb-callback";
+        const VAMSYS_TOKEN_URL = "https://auth.vamsys.co/oauth/token";
+        const urlParams = new URLSearchParams(window.location.search);
+        const authCode = urlParams.get("code");
+        const verifier = sessionStorage.getItem("code_verifier");
+
+        if(!authCode || !verifier){
+            document.body.innerHTML = "<h2>Login Failed, Return to <a href='index.html'>EFB Home</a></h2>";
+        }else{
+            fetch(VAMSYS_TOKEN_URL, {
+                method: "POST",
+                headers: {"Content-Type":"application/x-www-form-urlencoded"},
+                body: new URLSearchParams({
+                    grant_type: "authorization_code",
+                    client_id: CLIENT_ID,
+                    redirect_uri: REDIRECT_URI,
+                    code: authCode,
+                    code_verifier: verifier
+                })
+            }).then(res=>res.json()).then(data=>{
+                // 拿到登录令牌，存入本地，跳转飞行仪表盘
+                localStorage.setItem("vamsys_token", data.access_token);
+                window.location.href = "dashboard.html";
+            })
+        }
+    </script>
+</body>
+</html>
