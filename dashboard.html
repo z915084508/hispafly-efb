@@ -3,180 +3,592 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>HPF EFB | Pilot Dashboard</title>
+    <title>HISPAFLY EFB | Dashboard</title>
     <style>
         :root {
-            --color-spain-red: #c1121f;
-            --color-spain-yellow: #ffc107;
-            --color-dark-brown: #3a2413;
-            --color-light-cream: #f2e9d8;
-            --color-white: #ffffff;
-            --shadow-soft: 0 4px 16px rgba(0,0,0,0.15);
+            --red: #d71920;
+            --yellow: #ffc400;
+            --ink: #05080d;
+            --panel: rgba(4, 7, 12, 0.82);
+            --panel-soft: rgba(255,255,255,0.08);
+            --line: rgba(255,255,255,0.14);
+            --text: #ffffff;
+            --muted: rgba(255,255,255,0.66);
+            --danger: #ff6b6b;
+            --ok: #72f0a3;
+            --shadow: 0 24px 80px rgba(0,0,0,0.38);
         }
+
         * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-            font-family: 'Arial', sans-serif;
         }
+
+        html,
+        body {
+            min-height: 100%;
+        }
+
         body {
             min-height: 100vh;
-            background: linear-gradient(rgba(58, 36, 19, 0.88), rgba(58, 36, 19, 0.94)), url("aircraft-bg.jpg");
+            overflow: hidden;
+            background: #05080d;
+            color: var(--text);
+            font-family: Arial, Helvetica, sans-serif;
+            letter-spacing: 0;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background:
+                linear-gradient(90deg, rgba(1,3,7,0.96) 0%, rgba(1,3,7,0.88) 32%, rgba(1,3,7,0.55) 100%),
+                url("assets/login-tablet-bg.jpg");
             background-size: cover;
             background-position: center;
-            background-attachment: fixed;
-            padding: 20px 15px;
         }
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
+
+        .app {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: grid;
+            grid-template-rows: 30px 1fr;
         }
-        .header-bar {
+
+        .status-bar {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-            gap:12px;
+            padding: 0 18px;
+            background: rgba(0,0,0,0.56);
+            border-bottom: 1px solid rgba(255,255,255,0.10);
+            color: rgba(255,255,255,0.78);
+            font-size: 11px;
         }
-        .logo-block {
-            display:flex;
-            align-items:center;
-            gap:10px;
+
+        .status-right {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
         }
-        .logo-small {
-            height: 50px;
+
+        .signal {
+            display: inline-flex;
+            align-items: end;
+            gap: 2px;
+            height: 12px;
         }
-        .header-title {
-            color:#fff;
-            font-size:22px;
-            font-weight:bold;
-        }
-        .logout-btn {
-            padding: 9px 18px;
-            border: 2px solid var(--color-spain-red);
-            background: transparent;
-            color: #fff;
-            border-radius: 8px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: 0.25s ease;
-        }
-        .logout-btn:hover {
-            background: var(--color-spain-red);
-        }
-        .card {
-            background: var(--color-light-cream);
-            border-radius: 14px;
-            padding: 24px;
-            margin-bottom: 18px;
-            box-shadow: var(--shadow-soft);
-        }
-        .card h2 {
-            color: var(--color-dark-brown);
-            font-size: 20px;
-            margin-bottom: 12px;
-            border-left: 4px solid var(--color-spain-red);
-            padding-left: 10px;
-        }
-        .card p {
-            color: #443322;
-            font-size: 15px;
-            line-height: 1.7;
-        }
-        .divider-line {
-            height: 3px;
-            background: linear-gradient(90deg, var(--color-spain-red), var(--color-spain-yellow), var(--color-spain-red));
+
+        .signal span {
+            width: 3px;
             border-radius: 2px;
-            margin: 20px 0;
+            background: rgba(255,255,255,0.82);
         }
-        .grid-row {
+
+        .signal span:nth-child(1) { height: 4px; }
+        .signal span:nth-child(2) { height: 7px; }
+        .signal span:nth-child(3) { height: 10px; }
+        .signal span:nth-child(4) {
+            height: 12px;
+            background: rgba(255,255,255,0.38);
+        }
+
+        .shell {
+            min-height: calc(100vh - 30px);
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap:16px;
+            grid-template-columns: 286px minmax(0, 1fr);
         }
-        @media (max-width:700px) {
-            .grid-row {
-                grid-template-columns:1fr;
-            }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            min-height: calc(100vh - 30px);
+            padding: 28px 20px 22px;
+            background: linear-gradient(180deg, rgba(1,3,7,0.94), rgba(1,3,7,0.80));
+            border-right: 1px solid var(--line);
+            backdrop-filter: blur(12px);
         }
-        .item-block {
-            background:#fff;
-            padding:14px;
-            border-radius:10px;
-            margin:8px 0;
+
+        .brand {
+            margin-bottom: 34px;
         }
-        .map-box {
-            width:100%;
-            height:280px;
-            background:#ddd;
-            border-radius:10px;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            color:#333;
+
+        .brand img {
+            width: 220px;
+            max-width: 100%;
+            display: block;
+            filter: drop-shadow(0 14px 28px rgba(0,0,0,0.32));
         }
-        footer {
-            text-align: center;
-            color: rgba(255,255,255,0.75);
+
+        .menu {
+            display: grid;
+            gap: 10px;
+        }
+
+        .menu-btn {
+            width: 100%;
+            min-height: 52px;
+            border: 1px solid transparent;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.06);
+            color: rgba(255,255,255,0.74);
+            cursor: pointer;
+            text-align: left;
+            padding: 11px 14px;
+            transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+        }
+
+        .menu-btn span {
+            display: block;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .menu-btn small {
+            display: block;
+            color: rgba(255,255,255,0.48);
+            font-size: 11px;
+            margin-top: 3px;
+        }
+
+        .menu-btn:hover,
+        .menu-btn.active {
+            border-color: rgba(255,196,0,0.45);
+            background: linear-gradient(90deg, rgba(215,25,32,0.36), rgba(255,196,0,0.12));
+            color: #fff;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            display: grid;
+            gap: 12px;
+        }
+
+        .pilot-chip {
+            padding: 14px;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .pilot-chip strong {
+            display: block;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .pilot-chip span {
+            color: var(--muted);
             font-size: 12px;
-            margin-top: 30px;
         }
-        .tip-text {
-            color:#777;
-            font-style:italic;
+
+        .logout-btn {
+            min-height: 42px;
+            border: 1px solid rgba(215,25,32,0.8);
+            border-radius: 999px;
+            background: rgba(215,25,32,0.08);
+            color: #fff;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .content {
+            min-width: 0;
+            height: calc(100vh - 30px);
+            overflow: hidden;
+            padding: 28px;
+        }
+
+        .content-header {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 20px;
+        }
+
+        .eyebrow {
+            color: var(--yellow);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        h1 {
+            font-size: clamp(28px, 3vw, 42px);
+            line-height: 1;
+        }
+
+        .subhead {
+            color: var(--muted);
+            font-size: 14px;
+            margin-top: 8px;
+        }
+
+        .refresh-btn {
+            min-width: 112px;
+            min-height: 42px;
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 999px;
+            background: rgba(255,255,255,0.08);
+            color: #fff;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .panel {
+            height: calc(100vh - 148px);
+            overflow: auto;
+            padding: 18px;
+            border: 1px solid var(--line);
+            border-radius: 22px;
+            background: rgba(4,7,12,0.62);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(14px);
+        }
+
+        .panel::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .panel::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.18);
+            border-radius: 999px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .card {
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            background: rgba(255,255,255,0.07);
+            padding: 16px;
+        }
+
+        .card.wide {
+            grid-column: 1 / -1;
+        }
+
+        .card h2,
+        .card h3 {
+            font-size: 17px;
+            margin-bottom: 12px;
+            padding-left: 10px;
+            border-left: 4px solid var(--red);
+        }
+
+        .card p,
+        .data-row,
+        .empty {
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.55;
+        }
+
+        .data-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .data-row:last-child {
+            border-bottom: 0;
+        }
+
+        .data-row strong {
+            color: rgba(255,255,255,0.90);
+            font-weight: 700;
+        }
+
+        .list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .item {
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 14px;
+            padding: 14px;
+            background: rgba(0,0,0,0.18);
+        }
+
+        .item-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            min-height: 24px;
+            padding: 0 9px;
+            border-radius: 999px;
+            background: rgba(255,196,0,0.14);
+            color: var(--yellow);
+            font-size: 11px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .meta {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .action-card {
+            min-height: 126px;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 16px;
+            padding: 16px;
+            background: rgba(255,255,255,0.06);
+        }
+
+        .action-card strong {
+            display: block;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .action-card p {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        .telex {
+            display: grid;
+            grid-template-columns: minmax(280px, 360px) 1fr;
+            gap: 14px;
+        }
+
+        .field {
+            display: grid;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .field label {
+            color: rgba(255,255,255,0.78);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            border: 1px solid rgba(255,255,255,0.16);
+            border-radius: 12px;
+            background: rgba(0,0,0,0.28);
+            color: #fff;
+            padding: 11px 12px;
+            font: inherit;
+        }
+
+        textarea {
+            min-height: 132px;
+            resize: vertical;
+        }
+
+        .primary-btn {
+            width: 100%;
+            min-height: 44px;
+            border: 0;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--red), #ef3c18 48%, var(--yellow));
+            color: #fff;
+            cursor: pointer;
+            font-weight: 800;
+        }
+
+        .message-log {
+            min-height: 350px;
+            border-radius: 16px;
+            padding: 14px;
+            background: rgba(0,0,0,0.24);
+            border: 1px solid rgba(255,255,255,0.10);
+            color: rgba(255,255,255,0.70);
+            font-family: "Courier New", monospace;
+            font-size: 13px;
+            line-height: 1.55;
+            white-space: pre-wrap;
+        }
+
+        .error {
+            color: var(--danger);
+        }
+
+        .ok {
+            color: var(--ok);
+        }
+
+        @media (max-width: 820px) {
+            body {
+                overflow: auto;
+            }
+
+            .app {
+                min-height: 100svh;
+            }
+
+            .shell {
+                min-height: calc(100svh - 30px);
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                min-height: auto;
+                padding: 16px;
+                border-right: 0;
+                border-bottom: 1px solid var(--line);
+            }
+
+            .brand {
+                margin-bottom: 16px;
+            }
+
+            .brand img {
+                width: 190px;
+            }
+
+            .menu {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .sidebar-footer {
+                margin-top: 14px;
+                grid-template-columns: 1fr 130px;
+            }
+
+            .content {
+                height: auto;
+                min-height: 70svh;
+                padding: 18px;
+                overflow: visible;
+            }
+
+            .panel {
+                height: auto;
+                max-height: none;
+            }
+
+            .grid,
+            .action-grid,
+            .telex {
+                grid-template-columns: 1fr;
+            }
+
+            .meta {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header-bar">
-            <div class="logo-block">
-                <img class="logo-small" src="logo.png" alt="Hispafly Logo">
-                <span class="header-title">HPF EFB</span>
-            </div>
-            <button class="logout-btn" onclick="logout()">LOG OUT</button>
+    <main class="app">
+        <div class="status-bar" aria-hidden="true">
+            <span id="utcTime">--:-- UTC</span>
+            <span>HISPAFLY EFB</span>
+            <span class="status-right">
+                <span class="signal">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </span>
+                <span>100%</span>
+            </span>
         </div>
 
-        <div class="card">
-            <h2>Pilot Profile</h2>
-            <div id="profileBox">
-                <p class="tip-text">Loading pilot data...</p>
-            </div>
-        </div>
-
-        <div class="divider-line"></div>
-
-        <div class="grid-row">
-            <div class="card">
-                <h2>My Flight Bookings</h2>
-                <div id="bookingBox">
-                    <p class="tip-text">Loading bookings...</p>
+        <div class="shell">
+            <aside class="sidebar">
+                <div class="brand">
+                    <img src="assets/hispafly-logo-white.png" alt="HISPAFLY">
                 </div>
-            </div>
-            <div class="card">
-                <h2>Flight Track Map</h2>
-                <div class="map-box" id="mapContainer">
-                    Select a PIREP to view flight route track
+
+                <nav class="menu" aria-label="Dashboard sections">
+                    <button class="menu-btn" data-view="profile">
+                        <span>Pilot Profile</span>
+                        <small>Identity and rank</small>
+                    </button>
+                    <button class="menu-btn" data-view="booked">
+                        <span>Booked Flight</span>
+                        <small>Bookings and logbook</small>
+                    </button>
+                    <button class="menu-btn" data-view="dispatch">
+                        <span>Flight Dispatch</span>
+                        <small>Create and file</small>
+                    </button>
+                    <button class="menu-btn" data-view="telex">
+                        <span>TELEX</span>
+                        <small>Hoppie ACARS</small>
+                    </button>
+                </nav>
+
+                <div class="sidebar-footer">
+                    <div class="pilot-chip">
+                        <strong id="pilotName">Pilot loading</strong>
+                        <span id="pilotRank">HISPAFLY crew</span>
+                    </div>
+                    <button class="logout-btn" onclick="logout()">LOG OUT</button>
                 </div>
-            </div>
-        </div>
+            </aside>
 
-        <div class="card">
-            <h2>My PIREP Logbook</h2>
-            <div id="pirepBox">
-                <p class="tip-text">Loading flight reports...</p>
-            </div>
+            <section class="content">
+                <div class="content-header">
+                    <div>
+                        <div class="eyebrow" id="viewEyebrow">Operations</div>
+                        <h1 id="viewTitle">Activities</h1>
+                        <p class="subhead" id="viewSubhead">Latest events, tours, and community activity registrations.</p>
+                    </div>
+                    <button class="refresh-btn" id="refreshBtn">REFRESH</button>
+                </div>
+                <div class="panel" id="mainPanel">
+                    <p class="empty">Loading dashboard...</p>
+                </div>
+            </section>
         </div>
-
-        <footer>
-            © 2026 Hispafly Virtual Airline — HPF EFB System
-        </footer>
-    </div>
+    </main>
 
     <script>
         const API_ROOT = "https://vamsys.io/api/v3/pilot";
         let accessToken = localStorage.getItem("vamsys_token");
+        let currentView = "activities";
+        let pilotData = null;
+        let bookingsData = null;
+        let pirepsData = null;
+        let claimsData = null;
+        let activitiesData = null;
 
         if (!accessToken) {
             window.location.href = "index.html";
@@ -188,10 +600,80 @@
         };
 
         window.addEventListener("DOMContentLoaded", () => {
-            loadPilotProfile();
-            loadBookings();
-            loadPireps();
+            updateUtcTime();
+            setInterval(updateUtcTime, 30000);
+            setupNavigation();
+            loadInitialDashboard();
         });
+
+        function updateUtcTime() {
+            const now = new Date();
+            const hours = String(now.getUTCHours()).padStart(2, "0");
+            const minutes = String(now.getUTCMinutes()).padStart(2, "0");
+            document.getElementById("utcTime").textContent = `${hours}:${minutes} UTC`;
+        }
+
+        function setupNavigation() {
+            document.querySelectorAll(".menu-btn").forEach((button) => {
+                button.addEventListener("click", () => {
+                    setView(button.dataset.view);
+                });
+            });
+            document.getElementById("refreshBtn").addEventListener("click", () => refreshCurrentView(true));
+        }
+
+        async function loadInitialDashboard() {
+            await loadPilotProfile();
+            await setView("activities");
+        }
+
+        async function setView(view) {
+            currentView = view;
+            document.querySelectorAll(".menu-btn").forEach((button) => {
+                button.classList.toggle("active", button.dataset.view === view);
+            });
+            updateHeader(view);
+            await refreshCurrentView(false);
+        }
+
+        function updateHeader(view) {
+            const copy = {
+                activities: ["Operations", "Activities", "Latest events, tours, and community activity registrations."],
+                profile: ["Pilot", "Pilot Profile", "Crew identity, network IDs, rank, and flight time."],
+                booked: ["Flights", "Booked Flight", "Bookings, PIREPs, claims, comments, and logbook overview."],
+                dispatch: ["Dispatch", "Flight Dispatch", "Booking creation, PIREP filing, SimBrief dispatch, and comments."],
+                telex: ["ACARS", "TELEX", "Hoppie ACARS style logon, inbox, and telex compose station."]
+            }[view];
+            document.getElementById("viewEyebrow").textContent = copy[0];
+            document.getElementById("viewTitle").textContent = copy[1];
+            document.getElementById("viewSubhead").textContent = copy[2];
+        }
+
+        async function refreshCurrentView(force) {
+            const panel = document.getElementById("mainPanel");
+            panel.innerHTML = `<p class="empty">Loading ${escapeHtml(currentView)}...</p>`;
+
+            try {
+                if (currentView === "activities") {
+                    if (!activitiesData || force) activitiesData = await fetchPilotJson("/activities/registrations");
+                    renderActivities();
+                } else if (currentView === "profile") {
+                    if (!pilotData || force) await loadPilotProfile();
+                    renderProfile();
+                } else if (currentView === "booked") {
+                    if (!bookingsData || force) bookingsData = await loadBookings();
+                    if (!pirepsData || force) pirepsData = await loadPireps();
+                    if (!claimsData || force) claimsData = await loadClaims();
+                    renderBookedFlight();
+                } else if (currentView === "dispatch") {
+                    renderDispatch();
+                } else if (currentView === "telex") {
+                    renderTelex();
+                }
+            } catch (err) {
+                panel.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+            }
+        }
 
         function buildApiUrl(path, params = {}) {
             const url = new URL(`${API_ROOT}${path}`);
@@ -203,14 +685,25 @@
             return url.toString();
         }
 
-        async function fetchPilotJson(path, params = {}) {
+        async function fetchPilotJson(path, params = {}, options = {}) {
             const url = buildApiUrl(path, params);
-            const res = await fetch(url, { headers: authHeader });
+            const res = await fetch(url, {
+                method: options.method || "GET",
+                headers: {
+                    ...authHeader,
+                    ...(options.body ? { "Content-Type": "application/json" } : {})
+                },
+                body: options.body ? JSON.stringify(options.body) : undefined
+            });
             const text = await res.text();
-            let json;
 
+            if (res.status === 204) {
+                return { data: null };
+            }
+
+            let json;
             try {
-                json = JSON.parse(text);
+                json = text ? JSON.parse(text) : { data: null };
             } catch (err) {
                 const preview = text.replace(/\s+/g, " ").slice(0, 180) || "empty response";
                 throw new Error(`VAMSYS returned non-JSON for ${path} (HTTP ${res.status}): ${preview}`);
@@ -224,6 +717,251 @@
             return json;
         }
 
+        async function loadPilotProfile() {
+            const json = await fetchPilotJson("/user");
+            pilotData = json.data || {};
+            const fullName = buildName(pilotData);
+            document.getElementById("pilotName").textContent = fullName || "HISPAFLY Pilot";
+            document.getElementById("pilotRank").textContent = getRank(pilotData);
+            return pilotData;
+        }
+
+        async function loadBookings() {
+            const json = await fetchPilotJson("/bookings", {
+                sort: "-id",
+                "page[size]": "10",
+                "filter[status]": "current"
+            });
+            return json.data || [];
+        }
+
+        async function loadPireps() {
+            const json = await fetchPilotJson("/pireps", {
+                sort: "-id",
+                "page[size]": "10"
+            });
+            return json.data || [];
+        }
+
+        async function loadClaims() {
+            try {
+                const json = await fetchPilotJson("/claims", {
+                    sort: "-id",
+                    "page[size]": "6"
+                });
+                return json.data || [];
+            } catch (err) {
+                return { error: err.message };
+            }
+        }
+
+        function renderActivities() {
+            const list = Array.isArray(activitiesData?.data) ? activitiesData.data : [];
+            if (list.length === 0) {
+                document.getElementById("mainPanel").innerHTML = `
+                    <div class="card">
+                        <h2>Activities</h2>
+                        <p class="empty">No activity registrations were returned for this pilot.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = list.map((activity) => {
+                const a = activity.activity || activity;
+                const title = a.name || a.title || activity.name || activity.title || `Activity #${formatValue(a.id || activity.id)}`;
+                const status = activity.status || a.status || "Registered";
+                const starts = a.start_at || a.starts_at || a.start_date || activity.created_at;
+                const ends = a.end_at || a.ends_at || a.end_date || activity.updated_at;
+                return `
+                    <article class="item">
+                        <div class="item-title">
+                            <span>${escapeHtml(title)}</span>
+                            <span class="pill">${escapeHtml(status)}</span>
+                        </div>
+                        <p>${escapeHtml(a.description || activity.description || "Community activity registration")}</p>
+                        <div class="meta" style="margin-top:12px;">
+                            <span>Start: ${escapeHtml(formatDate(starts))}</span>
+                            <span>End: ${escapeHtml(formatDate(ends))}</span>
+                            <span>ID: ${escapeHtml(formatValue(a.id || activity.activity_id || activity.id))}</span>
+                        </div>
+                    </article>
+                `;
+            }).join("");
+
+            document.getElementById("mainPanel").innerHTML = `<div class="list">${html}</div>`;
+        }
+
+        function renderProfile() {
+            const u = pilotData || {};
+            const networks = u.networks || {};
+            const rows = [
+                ["Full Name", buildName(u)],
+                ["Email", u.email],
+                ["VATSIM ID", networks.vatsim_id || u.vatsim_id],
+                ["IVAO ID", networks.ivao_id || u.ivao_id],
+                ["Pilot ID", u.id || u.pilot_id],
+                ["Total Flight Time", getFlightTime(u)],
+                ["Current Rank", getRank(u)]
+            ];
+
+            document.getElementById("mainPanel").innerHTML = `
+                <div class="grid">
+                    <section class="card wide">
+                        <h2>Pilot Profile</h2>
+                        <div class="data-list">
+                            ${rows.map(([label, value]) => `
+                                <div class="data-row">
+                                    <span>${escapeHtml(label)}</span>
+                                    <strong>${escapeHtml(formatValue(value))}</strong>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </section>
+                </div>
+            `;
+        }
+
+        function renderBookedFlight() {
+            const bookingItems = renderFlightList(bookingsData || [], "No active bookings.");
+            const pirepItems = renderFlightList(pirepsData || [], "No submitted PIREPs.", true);
+            const claimsItems = Array.isArray(claimsData)
+                ? renderFlightList(claimsData, "No claims returned.")
+                : `<p class="error">${escapeHtml(claimsData?.error || "Claims unavailable.")}</p>`;
+
+            document.getElementById("mainPanel").innerHTML = `
+                <div class="grid">
+                    <section class="card">
+                        <h2>Read Bookings</h2>
+                        <div class="list">${bookingItems}</div>
+                    </section>
+                    <section class="card">
+                        <h2>PIREP Logbook</h2>
+                        <div class="list">${pirepItems}</div>
+                    </section>
+                    <section class="card wide">
+                        <h2>Claims, Comments, and Logbook</h2>
+                        <div class="list">${claimsItems}</div>
+                    </section>
+                </div>
+            `;
+        }
+
+        function renderDispatch() {
+            document.getElementById("mainPanel").innerHTML = `
+                <div class="action-grid">
+                    <div class="action-card">
+                        <strong>Create Booking</strong>
+                        <p>Connects to POST /bookings for route and fleet based booking creation.</p>
+                    </div>
+                    <div class="action-card">
+                        <strong>Dispatch Flight</strong>
+                        <p>Uses booking SimBrief and dispatch endpoints for operational release flow.</p>
+                    </div>
+                    <div class="action-card">
+                        <strong>File PIREP</strong>
+                        <p>Uses POST /bookings/{id}/pirep after a completed flight.</p>
+                    </div>
+                    <div class="action-card">
+                        <strong>PIREP Comments</strong>
+                        <p>Uses GET and POST /pireps/{id}/comments for crew communication.</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderTelex() {
+            document.getElementById("mainPanel").innerHTML = `
+                <div class="telex">
+                    <section class="card">
+                        <h2>Hoppie Logon</h2>
+                        <div class="field">
+                            <label for="telexCallsign">Callsign</label>
+                            <input id="telexCallsign" autocomplete="off" placeholder="HPF123">
+                        </div>
+                        <div class="field">
+                            <label for="telexCode">Hoppie Logon Code</label>
+                            <input id="telexCode" type="password" autocomplete="off" placeholder="Logon code">
+                        </div>
+                        <button class="primary-btn" id="telexLogonBtn">LOGON</button>
+                    </section>
+                    <section class="card">
+                        <h2>TELEX Station</h2>
+                        <div class="field">
+                            <label for="telexTo">To</label>
+                            <input id="telexTo" autocomplete="off" placeholder="Station or callsign">
+                        </div>
+                        <div class="field">
+                            <label for="telexMessage">Message</label>
+                            <textarea id="telexMessage" placeholder="TYPE TELEX MESSAGE"></textarea>
+                        </div>
+                        <button class="primary-btn" id="telexSendBtn">SEND TELEX</button>
+                    </section>
+                    <section class="card wide">
+                        <h2>Message Log</h2>
+                        <div class="message-log" id="telexLog">HOPPIE ACARS GATEWAY READY
+SERVER RELAY REQUIRED BEFORE LIVE SEND/RECEIVE</div>
+                    </section>
+                </div>
+            `;
+
+            document.getElementById("telexLogonBtn").addEventListener("click", () => {
+                const callsign = document.getElementById("telexCallsign").value.trim() || "UNKNOWN";
+                document.getElementById("telexLog").textContent = `LOGON REQUEST QUEUED FOR ${callsign}\nSERVER RELAY REQUIRED BEFORE LIVE HOPPIE CONNECT`;
+            });
+            document.getElementById("telexSendBtn").addEventListener("click", () => {
+                const to = document.getElementById("telexTo").value.trim() || "STATION";
+                const msg = document.getElementById("telexMessage").value.trim() || "EMPTY MESSAGE";
+                document.getElementById("telexLog").textContent += `\n\nOUT TO ${to}\n${msg}`;
+            });
+        }
+
+        function renderFlightList(list, emptyMessage, isPirep = false) {
+            if (!Array.isArray(list) || list.length === 0) {
+                return `<p class="empty">${escapeHtml(emptyMessage)}</p>`;
+            }
+
+            return list.map((flight) => {
+                const title = `${formatValue(flight.flight_number, "Flight")} ${formatValue(flight.callsign, "")}`.trim();
+                const status = flight.status || flight.type || (isPirep ? "PIREP" : "Booking");
+                return `
+                    <article class="item">
+                        <div class="item-title">
+                            <span>${escapeHtml(title)}</span>
+                            <span class="pill">${escapeHtml(status)}</span>
+                        </div>
+                        <div class="meta">
+                            <span>From: ${escapeHtml(formatValue(flight.departure_icao || flight.departure_id))}</span>
+                            <span>To: ${escapeHtml(formatValue(flight.arrival_icao || flight.arrival_id))}</span>
+                            <span>Network: ${escapeHtml(formatValue(flight.network))}</span>
+                            <span>Dep: ${escapeHtml(formatDate(flight.departure_time))}</span>
+                            <span>Arr: ${escapeHtml(formatDate(flight.arrival_time))}</span>
+                            <span>ID: ${escapeHtml(formatValue(flight.id))}</span>
+                        </div>
+                    </article>
+                `;
+            }).join("");
+        }
+
+        function buildName(user) {
+            return `${formatValue(user.first_name, "")} ${formatValue(user.last_name, "")}`.trim() || user.name || "";
+        }
+
+        function getRank(user) {
+            return user.rank?.name || user.rank_name || user.current_rank || user.rank || "N/A";
+        }
+
+        function getFlightTime(user) {
+            const value = user.stats?.flight_time || user.stats?.block_time || user.total_flight_time || user.flight_time || user.block_time;
+            if (!value && value !== 0) return "N/A";
+            if (typeof value === "number") {
+                const hours = Math.floor(value / 60);
+                const minutes = value % 60;
+                return `${hours}h ${minutes}m`;
+            }
+            return value;
+        }
+
         function formatValue(value, fallback = "N/A") {
             return value === undefined || value === null || value === "" ? fallback : value;
         }
@@ -234,107 +972,16 @@
             return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
         }
 
-        async function loadPilotProfile() {
-            try {
-                const json = await fetchPilotJson("/user");
-                const u = json.data || {};
-                const networks = u.networks || {};
-                const html = `
-                    <p><strong>Full Name:</strong> ${formatValue(u.first_name, "")} ${formatValue(u.last_name, "")}</p>
-                    <p><strong>Email:</strong> ${formatValue(u.email)}</p>
-                    <p><strong>VATSIM ID:</strong> ${formatValue(networks.vatsim_id)}</p>
-                    <p><strong>IVAO ID:</strong> ${formatValue(networks.ivao_id)}</p>
-                    <p><strong>Pilot ID:</strong> ${formatValue(u.id)}</p>
-                `;
-                document.getElementById("profileBox").innerHTML = html;
-            } catch (err) {
-                document.getElementById("profileBox").innerHTML = `<p style="color:red">Failed to load profile: ${err.message}</p>`;
-            }
+        function escapeHtml(value) {
+            return String(formatValue(value, ""))
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
 
-        async function loadBookings() {
-            try {
-                const json = await fetchPilotJson("/bookings", {
-                    sort: "-id",
-                    "page[size]": "10",
-                    "filter[status]": "current"
-                });
-                const list = json.data || [];
-                if (list.length === 0) {
-                    document.getElementById("bookingBox").innerHTML = "<p>No active flight bookings</p>";
-                    return;
-                }
-
-                let html = "";
-                list.forEach(book => {
-                    html += `
-                    <div class="item-block">
-                        <p><strong>${formatValue(book.flight_number, "Flight")} ${formatValue(book.callsign, "")}</strong></p>
-                        <p>${formatValue(book.departure_id)} → ${formatValue(book.arrival_id)}</p>
-                        <p>Dep: ${formatDate(book.departure_time)}</p>
-                        <p>Network: ${formatValue(book.network)}</p>
-                    </div>
-                    `;
-                });
-                document.getElementById("bookingBox").innerHTML = html;
-            } catch (err) {
-                document.getElementById("bookingBox").innerHTML = `<p style="color:red">Load bookings error: ${err.message}</p>`;
-            }
-        }
-
-        async function loadPireps() {
-            try {
-                const json = await fetchPilotJson("/pireps", {
-                    sort: "-id",
-                    "page[size]": "10"
-                });
-                const list = json.data || [];
-                if (list.length === 0) {
-                    document.getElementById("pirepBox").innerHTML = "<p>No submitted PIREPs yet</p>";
-                    return;
-                }
-
-                let html = "";
-                list.forEach(p => {
-                    html += `
-                    <div class="item-block">
-                        <p><strong>${formatValue(p.flight_number, "Flight")} | ${formatValue(p.status)}</strong></p>
-                        <p>${formatValue(p.departure_id)} → ${formatValue(p.arrival_id)}</p>
-                        <p>Flight Time: ${formatValue(p.flight_time, 0)} mins | Fuel Used: ${formatValue(p.fuel_used, 0)}</p>
-                        <p>Landing Rate: ${formatValue(p.landing_rate)}</p>
-                        <button onclick="loadFlightMap(${p.id})" style="margin-top:6px;padding:4px 10px;cursor:pointer;">View Flight Map</button>
-                    </div>
-                    `;
-                });
-                document.getElementById("pirepBox").innerHTML = html;
-            } catch (err) {
-                document.getElementById("pirepBox").innerHTML = `<p style="color:red">Load PIREPs error: ${err.message}</p>`;
-            }
-        }
-
-        async function loadFlightMap(pirepId) {
-            const mapBox = document.getElementById("mapContainer");
-            mapBox.innerText = "Loading flight track data...";
-            try {
-                const track = await fetchPilotJson(`/pireps/${pirepId}/profile`);
-                const altPoints = track.data?.altitude || [];
-                const groundPoints = track.data?.groundspeed || [];
-                const annots = track.data?.annotations || [];
-                mapBox.innerHTML = `
-                    <div style="text-align:center;">
-                        <p>Flight Track Data Loaded (PIREP #${pirepId})</p>
-                        <p>Altitude Points: ${altPoints.length}</p>
-                        <p>Groundspeed Points: ${groundPoints.length}</p>
-                        <p>Markers: ${annots.length}</p>
-                        <p class="tip-text" style="margin-top:8px;">Integrate Leaflet/Mapbox for geographic map rendering</p>
-                    </div>
-                `;
-            } catch (err) {
-                mapBox.innerHTML = `<p style="color:red">Failed to load track: ${err.message}</p>`;
-            }
-        }
-
-        function logout(){
+        function logout() {
             localStorage.removeItem("vamsys_token");
             sessionStorage.removeItem("pkce_v");
             sessionStorage.removeItem("pkce_s");
