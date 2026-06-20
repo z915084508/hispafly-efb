@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/vamsys-token",
+      "destination": "https://vamsys.io/oauth/token"
+    }
+  ]
+}
