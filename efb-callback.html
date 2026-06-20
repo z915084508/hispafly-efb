@@ -6,71 +6,75 @@
     <title>HPF EFB - Auth Callback</title>
     <style>
         body {
-            background:#3a2413;
-            color:#fff;
+            background:#fff;
+            color:#000;
             display:flex;
             align-items:center;
             justify-content:center;
             height:100vh;
-            font-size:18px;
+            font-size:32px;
             text-align:center;
+        }
+        a {
+            color:#0066cc;
         }
     </style>
 </head>
 <body>
-    <div id="tip">Verifying VAMSYS Login...</div>
+    <div id="msgBox">Verifying VAMSYS Login...</div>
     <script>
         const CLIENT_ID = "909";
         const REDIRECT_URI = "https://hispafly-94hskuxui-hispafly-efb.vercel.app/efb-callback.html";
-        // 本地代理地址，解决CORS跨域
+        // 使用Vercel代理解决CORS跨域
         const TOKEN_URL = "/api/vamsys-token";
         const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get("code");
-        const stateReturn = urlParams.get("state");
+        const authCode = urlParams.get("code");
+        const returnState = urlParams.get("state");
 
-        // 双重读取备份，防止session丢失
+        // 双存储读取，防止session丢失
         const savedState = sessionStorage.getItem("oauth_state") || localStorage.getItem("oauth_state");
         const codeVerifier = sessionStorage.getItem("code_verifier") || localStorage.getItem("code_verifier");
-        const tipBox = document.getElementById("tip");
+        const msgBox = document.getElementById("msgBox");
 
-        if(!stateReturn || stateReturn !== savedState) {
-            tipBox.innerText = "Login Failed: CSRF State Mismatch, Return to Login";
-            setTimeout(()=>window.location.href="index.html",2500);
-        } else if(!code || !codeVerifier) {
-            tipBox.innerText = "Login Failed: Missing PKCE Data, Retry Login";
-            setTimeout(()=>window.location.href="index.html",2500);
-        } else {
-            fetch(TOKEN_URL, {
-                method:"POST",
-                headers:{"Content-Type":"application/x-www-form-urlencoded"},
-                body: new URLSearchParams({
-                    grant_type:"authorization_code",
-                    client_id:CLIENT_ID,
-                    redirect_uri:REDIRECT_URI,
-                    code:code,
-                    code_verifier:codeVerifier
-                })
-            }).then(async res=>{
-                if(!res.ok) {
-                    const errText = await res.text();
-                    throw new Error(`Request error ${res.status}: ${errText}`);
-                }
-                return res.json();
-            }).then(data=>{
-                // 持久存储access_token
-                localStorage.setItem("vamsys_token", data.access_token);
-                // 清理临时缓存
-                sessionStorage.removeItem("code_verifier");
-                sessionStorage.removeItem("oauth_state");
-                localStorage.removeItem("code_verifier");
-                localStorage.removeItem("oauth_state");
-                // 跳转仪表盘
-                window.location.href = "dashboard.html";
-            }).catch(err=>{
-                tipBox.innerText = `Verify Failed: ${err.message}\nRedirecting to login...`;
-                setTimeout(()=>window.location.href="index.html",4000);
-            })
+        // 1. CSRF state 校验失败
+        if (!returnState || returnState !== savedState) {
+            msgBox.innerHTML = `Login Failed, Return to <a href="index.html">EFB Home</a>`;
+            return;
         }
+        // 2. PKCE verifier 丢失
+        if (!authCode || !codeVerifier) {
+            msgBox.innerHTML = `Login Failed, Return to <a href="index.html">EFB Home</a>`;
+            return;
+        }
+
+        // 3. 发起代理Token交换请求
+        fetch(TOKEN_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: new URLSearchParams({
+                grant_type: "authorization_code",
+                client_id: CLIENT_ID,
+                redirect_uri: REDIRECT_URI,
+                code: authCode,
+                code_verifier: codeVerifier
+            })
+        }).then(async res => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            // 保存登录凭证
+            localStorage.setItem("vamsys_token", data.access_token);
+            // 清理临时缓存
+            sessionStorage.clear();
+            localStorage.removeItem("oauth_state");
+            localStorage.removeItem("code_verifier");
+            // 跳转仪表盘
+            window.location.href = "dashboard.html";
+        }).catch(err => {
+            // 跨域/接口错误统一捕获，显示失败页面
+            msgBox.innerHTML = `Login Failed, Return to <a href="index.html">EFB Home</a>`;
+        })
     </script>
 </body>
 </html>
