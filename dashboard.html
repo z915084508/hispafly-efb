@@ -138,7 +138,6 @@
             <button class="logout-btn" onclick="logout()">LOG OUT</button>
         </div>
 
-        <!-- 飞行员资料 -->
         <div class="card">
             <h2>Pilot Profile</h2>
             <div id="profileBox">
@@ -149,14 +148,12 @@
         <div class="divider-line"></div>
 
         <div class="grid-row">
-            <!-- 预订航班 Bookings -->
             <div class="card">
                 <h2>My Flight Bookings</h2>
                 <div id="bookingBox">
                     <p class="tip-text">Loading bookings...</p>
                 </div>
             </div>
-            <!-- 飞行地图 Flight Map -->
             <div class="card">
                 <h2>Flight Track Map</h2>
                 <div class="map-box" id="mapContainer">
@@ -165,7 +162,6 @@
             </div>
         </div>
 
-        <!-- PIREP 飞行报告 -->
         <div class="card">
             <h2>My PIREP Logbook</h2>
             <div id="pirepBox">
@@ -179,11 +175,10 @@
     </div>
 
     <script>
-        // API 基础配置（匹配官方文档v3）
-        const API_BASE = "https://vamsys.io/api/v3/pilot";
+        const API_BASE = "/api/token-proxy";
+        const API_ROOT = "https://vamsys.io/api/v3/pilot";
         let accessToken = localStorage.getItem("vamsys_token");
 
-        // 无Token返回登录页
         if (!accessToken) {
             window.location.href = "index.html";
         }
@@ -192,17 +187,16 @@
             "Content-Type": "application/json"
         };
 
-        // 页面加载全部数据
         window.addEventListener("DOMContentLoaded", ()=>{
             loadPilotProfile();
             loadBookings();
             loadPireps();
         });
 
-        // 1. 加载飞行员基础资料 /user 接口
+        // 飞行员资料
         async function loadPilotProfile() {
             try {
-                const res = await fetch(`${API_BASE}/user`, {headers:authHeader});
+                const res = await fetch(`${API_ROOT}/user`, {headers:authHeader});
                 const json = await res.json();
                 const u = json.data;
                 const html = `
@@ -218,10 +212,10 @@
             }
         }
 
-        // 2. 加载预订航班 /bookings
+        // 预订航班
         async function loadBookings() {
             try {
-                const res = await fetch(`${API_BASE}/bookings?sort=-id&page[size]=10`, {headers:authHeader});
+                const res = await fetch(`${API_ROOT}/bookings?sort=-id&page[size]=10`, {headers:authHeader});
                 const json = await res.json();
                 const list = json.data || [];
                 if(list.length === 0) {
@@ -245,10 +239,10 @@
             }
         }
 
-        // 3. 加载PIREP飞行报告 /pireps
+        // PIREP列表
         async function loadPireps() {
             try {
-                const res = await fetch(`${API_BASE}/pireps?sort=-id&page[size]=10`, {headers:authHeader});
+                const res = await fetch(`${API_ROOT}/pireps?sort=-id&page[size]=10`, {headers:authHeader});
                 const json = await res.json();
                 const list = json.data || [];
                 if(list.length === 0) {
@@ -273,12 +267,12 @@
             }
         }
 
-        // 4. 加载飞行轨迹地图数据 /pireps/{id}/profile
+        // 航线地图数据
         async function loadFlightMap(pirepId) {
             const mapBox = document.getElementById("mapContainer");
             mapBox.innerText = "Loading flight track data...";
             try {
-                const res = await fetch(`${API_BASE}/pireps/${pirepId}/profile`, {headers:authHeader});
+                const res = await fetch(`${API_ROOT}/pireps/${pirepId}/profile`, {headers:authHeader});
                 const track = await res.json();
                 const altPoints = track.data?.altitude || [];
                 const groundPoints = track.data?.groundspeed || [];
@@ -289,7 +283,7 @@
                         <p>Altitude Points: ${altPoints.length}</p>
                         <p>Groundspeed Points: ${groundPoints.length}</p>
                         <p>Markers: ${annots.length}</p>
-                        <p class="tip-text" style="margin-top:8px;">You can integrate Leaflet/Mapbox here to render real geographic map</p>
+                        <p class="tip-text" style="margin-top:8px;">Integrate Leaflet/Mapbox for geographic map rendering</p>
                     </div>
                 `;
             } catch (err) {
@@ -297,11 +291,13 @@
             }
         }
 
-        // 退出登录
+        // 登出
         function logout(){
             localStorage.removeItem("vamsys_token");
             sessionStorage.removeItem("code_verifier");
             sessionStorage.removeItem("oauth_state");
+            localStorage.removeItem("code_verifier");
+            localStorage.removeItem("oauth_state");
             window.location.href = "index.html";
         }
     </script>
