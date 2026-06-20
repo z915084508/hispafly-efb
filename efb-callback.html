@@ -2,164 +2,64 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>Hispafly EFB - Verifying Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HPF EFB - Auth Callback</title>
     <style>
-        :root {
-            --color-spain-red: #c1121f;
-            --color-spain-yellow: #ffc107;
-            --color-dark-brown: #3a2413;
-            --color-light-cream: #f2e9d8;
-            --color-white: #ffffff;
-            --shadow-soft: 0 4px 16px rgba(0,0,0,0.15);
-        }
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Arial', sans-serif;
-        }
         body {
-            min-height: 100vh;
-            background: linear-gradient(rgba(58, 36, 19, 0.85), rgba(58, 36, 19, 0.92)), url("https://hispafly-94hskuxui-hispafly-efb.vercel.app/aircraft-bg.jpg");
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .callback-card {
-            background: var(--color-light-cream);
-            border-radius: 14px;
-            box-shadow: var(--shadow-soft);
-            width: 100%;
-            max-width: 460px;
-            padding: 40px 32px;
-            text-align: center;
-        }
-        .logo-block {
-            margin-bottom: 24px;
-        }
-        .logo-block img {
-            height: 80px;
-            object-fit: contain;
-        }
-        h2 {
-            color: var(--color-dark-brown);
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-        .loading-text {
-            color: #55402e;
-            font-size: 15px;
-            margin-bottom: 30px;
-        }
-        .divider-line {
-            height: 3px;
-            background: linear-gradient(90deg, var(--color-spain-red), var(--color-spain-yellow), var(--color-spain-red));
-            width: 70%;
-            margin: 26px auto;
-            border-radius: 2px;
-        }
-        .error-tip {
-            color: var(--color-spain-red);
-            font-weight: 600;
-            margin: 12px 0;
-        }
-        .back-btn {
-            margin-top: 16px;
-            padding: 12px 24px;
-            border: 2px solid var(--color-spain-red);
-            background: transparent;
-            color: var(--color-spain-red);
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: 0.2s ease;
-        }
-        .back-btn:hover {
-            background: var(--color-spain-red);
-            color: white;
-        }
-        footer {
-            margin-top: 32px;
-            color: var(--color-light-cream);
-            font-size: 12px;
-            opacity: 0.8;
-            text-align: center;
+            background:#3a2413;
+            color:#fff;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            height:100vh;
+            font-size:18px;
+            text-align:center;
         }
     </style>
 </head>
 <body>
-    <div class="callback-card">
-        <div class="logo-block">
-            <img alt="Hispafly Logo" src="https://hispafly-94hskuxui-hispafly-efb.vercel.app/logo.png">
-        </div>
-
-        <h2>Verifying VAMSYS Pilot Login</h2>
-        <p class="loading-text">Please wait while we confirm your authorization...</p>
-
-        <div class="divider-line"></div>
-
-        <div id="statusMessage"></div>
-        <button class="back-btn" id="returnHomeBtn" style="display:none;">Return to EFB Login</button>
-    </div>
-
-    <footer>
-        © 2026 Hispafly Virtual Airline | Mobile EFB System
-    </footer>
-
+    <div id="tip">Processing Authorization...</div>
     <script>
-        // 固定配置（无需修改，与你的OAuth客户端匹配）
         const CLIENT_ID = "909";
         const REDIRECT_URI = "https://hispafly-94hskuxui-hispafly-efb.vercel.app/efb-callback.html";
-        const VAMSYS_TOKEN_URL = "https://vamsys.io/oauth/token";
-
-        const statusEl = document.getElementById("statusMessage");
-        const backBtn = document.getElementById("returnHomeBtn");
+        const TOKEN_URL = "https://vamsys.io/oauth/token";
         const urlParams = new URLSearchParams(window.location.search);
-        const authCode = urlParams.get("code");
+        const code = urlParams.get("code");
+        const stateReturn = urlParams.get("state");
+        const savedState = sessionStorage.getItem("oauth_state");
         const codeVerifier = sessionStorage.getItem("code_verifier");
+        const tipBox = document.getElementById("tip");
 
-        // 登录失败：无授权码/无本地验证串
-        if (!authCode || !codeVerifier) {
-            statusEl.innerHTML = `<p class="error-tip">Login verification failed: Missing valid authorization data.</p>`;
-            backBtn.style.display = "inline-block";
-            backBtn.addEventListener("click", () => window.location.href = "index.html");
+        // CSRF state校验
+        if(!stateReturn || stateReturn !== savedState) {
+            tipBox.innerText = "Login Failed: Invalid CSRF State, Please retry login";
+        } else if(!code || !codeVerifier) {
+            tipBox.innerText = "Login Failed: Missing auth code or PKCE verifier";
         } else {
-            // 向VAMSYS交换Access Token
-            fetch(VAMSYS_TOKEN_URL, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded"
-                },
+            // 交换Token
+            fetch(TOKEN_URL, {
+                method:"POST",
+                headers:{"Content-Type":"application/x-www-form-urlencoded"},
                 body: new URLSearchParams({
-                    grant_type: "authorization_code",
-                    client_id: CLIENT_ID,
-                    redirect_uri: REDIRECT_URI,
-                    code: authCode,
-                    code_verifier: codeVerifier
+                    grant_type:"authorization_code",
+                    client_id:CLIENT_ID,
+                    redirect_uri:REDIRECT_URI,
+                    code:code,
+                    code_verifier:codeVerifier
                 })
-            })
-            .then(res => res.json())
-            .then(tokenData => {
-                if (tokenData.access_token) {
-                    // 存储令牌，跳转仪表盘
-                    localStorage.setItem("vamsys_token", tokenData.access_token);
-                    window.location.href = "dashboard.html";
-                } else {
-                    statusEl.innerHTML = `<p class="error-tip">Failed to receive access token from VAMSYS.</p>`;
-                    backBtn.style.display = "inline-block";
-                    backBtn.addEventListener("click", () => window.location.href = "index.html");
-                }
-            })
-            .catch(err => {
-                statusEl.innerHTML = `<p class="error-tip">Network error, unable to connect to VAMSYS authentication server.</p>`;
-                backBtn.style.display = "inline-block";
-                backBtn.addEventListener("click", () => window.location.href = "index.html");
+            }).then(res=>{
+                if(!res.ok) throw new Error("Invalid grant / code expired");
+                return res.json();
+            }).then(data=>{
+                localStorage.setItem("vamsys_token", data.access_token);
+                // 清除临时PKCE/state缓存
+                sessionStorage.removeItem("code_verifier");
+                sessionStorage.removeItem("oauth_state");
+                // 跳转仪表盘
+                window.location.href = "dashboard.html";
+            }).catch(err=>{
+                tipBox.innerText = `Login Failed: ${err.message}, Go back to login page`;
+                setTimeout(()=>window.location.href="index.html",3000);
             })
         }
     </script>
