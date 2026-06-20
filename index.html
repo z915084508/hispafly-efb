@@ -118,12 +118,10 @@
 
     <script>
         const CLIENT_ID = "909";
+        const REDIRECT_URI = "https://hispafly-94hskuxui-hispafly-efb.vercel.app/efb-callback.html";
         const VAMSYS_AUTH_ENDPOINT = "https://vamsys.io/oauth/authorize";
         const SCOPE_LIST = "identity:basic identity:networks pilot:read pilot:write flights:read flights:write";
 
-        function getRedirectUri() {
-            return `${window.location.origin}/efb-callback.html`;
-        }
         function generateState() {
             const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
             let state = "";
@@ -149,18 +147,17 @@
         document.getElementById("loginBtn").addEventListener("click", async () => {
             const state = generateState();
             const verifier = generateCodeVerifier();
-            const redirectUri = getRedirectUri();
             sessionStorage.setItem("pkce_s", state);
             localStorage.setItem("pkce_s", state);
             sessionStorage.setItem("pkce_v", verifier);
             localStorage.setItem("pkce_v", verifier);
-            sessionStorage.setItem("oauth_redirect_uri", redirectUri);
-            localStorage.setItem("oauth_redirect_uri", redirectUri);
+            sessionStorage.setItem("oauth_redirect_uri", REDIRECT_URI);
+            localStorage.setItem("oauth_redirect_uri", REDIRECT_URI);
 
             const params = new URLSearchParams({
                 response_type: "code",
                 client_id: CLIENT_ID,
-                redirect_uri: redirectUri,
+                redirect_uri: REDIRECT_URI,
                 scope: SCOPE_LIST,
                 state: state,
                 code_challenge: await generateCodeChallenge(verifier),
