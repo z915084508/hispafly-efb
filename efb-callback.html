@@ -6,75 +6,79 @@
     <title>HPF EFB - Auth Callback</title>
     <style>
         body {
-            background:#fff;
-            color:#000;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            height:100vh;
-            font-size:32px;
-            text-align:center;
+            text-align: center;
+            margin-top: 100px;
+            font-family: Arial;
+            font-size: 32px;
         }
         a {
-            color:#0066cc;
+            color: #0066cc;
         }
     </style>
 </head>
 <body>
-    <div id="msgBox">Verifying VAMSYS Login...</div>
+    <h2 id="msg">Verifying Login...</h2>
     <script>
+        console.log("=== 页面脚本开始执行 ===");
         const CLIENT_ID = "909";
         const REDIRECT_URI = "https://hispafly-94hskuxui-hispafly-efb.vercel.app/efb-callback.html";
-        // 使用Vercel代理解决CORS跨域
-        const TOKEN_URL = "/api/vamsys-token";
-        const urlParams = new URLSearchParams(window.location.search);
-        const authCode = urlParams.get("code");
-        const returnState = urlParams.get("state");
+        const TOKEN_URL = "/api/token-proxy";
+        const params = new URLSearchParams(location.search);
+        const code = params.get("code");
+        const stateReturn = params.get("state");
+        console.log("URL携带code:", code);
+        console.log("URL携带state:", stateReturn);
 
-        // 双存储读取，防止session丢失
-        const savedState = sessionStorage.getItem("oauth_state") || localStorage.getItem("oauth_state");
-        const codeVerifier = sessionStorage.getItem("code_verifier") || localStorage.getItem("code_verifier");
-        const msgBox = document.getElementById("msgBox");
+        // 双存储兜底读取
+        const stateSession = sessionStorage.getItem("oauth_state");
+        const stateLocal = localStorage.getItem("oauth_state");
+        const verifierSession = sessionStorage.getItem("code_verifier");
+        const verifierLocal = localStorage.getItem("code_verifier");
+        const validState = stateSession || stateLocal;
+        const validVerifier = verifierSession || verifierLocal;
+        const msgDom = document.getElementById("msg");
+        console.log("本地存储有效state:", validState);
+        console.log("本地存储有效verifier:", validVerifier);
 
-        // 1. CSRF state 校验失败
-        if (!returnState || returnState !== savedState) {
-            msgBox.innerHTML = `Login Failed, Return to <a href="index.html">EFB Home</a>`;
-            return;
+        // 校验1：state不匹配
+        if (!stateReturn || stateReturn !== validState) {
+            console.error("校验失败：state 为空/不匹配");
+            msgDom.innerHTML = `Login Failed, Return to <a href="index.html">EFB Home</a>`;
         }
-        // 2. PKCE verifier 丢失
-        if (!authCode || !codeVerifier) {
-            msgBox.innerHTML = `Login Failed, Return to <a href="index.html">EFB Home</a>`;
-            return;
+        // 校验2：缺失code或verifier
+        else if (!code || !validVerifier) {
+            console.error("校验失败：缺少code 或 code_verifier");
+            msgDom.innerHTML = `Login Failed, Return to <a href="index.html">EFB Home</a>`;
         }
-
-        // 3. 发起代理Token交换请求
-        fetch(TOKEN_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded"
-            },
-            body: new URLSearchParams({
-                grant_type: "authorization_code",
-                client_id: CLIENT_ID,
-                redirect_uri: REDIRECT_URI,
-                code: authCode,
-                code_verifier: codeVerifier
+        // 发起后端代理交换Token
+        else {
+            console.log("校验通过，开始请求Token接口");
+            fetch(TOKEN_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({
+                    grant_type: "authorization_code",
+                    client_id: CLIENT_ID,
+                    redirect_uri: REDIRECT_URI,
+                    code: code,
+                    code_verifier: validVerifier
+                })
+            }).then(async res => {
+                console.log("Token接口响应状态码:", res.status);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                console.log("成功拿到access_token");
+                localStorage.setItem("vamsys_token", data.access_token);
+                // 清理临时缓存
+                sessionStorage.clear();
+                localStorage.removeItem("oauth_state");
+                localStorage.removeItem("code_verifier");
+                window.location.href = "dashboard.html";
+            }).catch(err => {
+                console.error("Token交换请求异常：", err);
+                msgDom.innerHTML = `Login Failed, Return to <a href="index.html">EFB Home</a>`;
             })
-        }).then(async res => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            // 保存登录凭证
-            localStorage.setItem("vamsys_token", data.access_token);
-            // 清理临时缓存
-            sessionStorage.clear();
-            localStorage.removeItem("oauth_state");
-            localStorage.removeItem("code_verifier");
-            // 跳转仪表盘
-            window.location.href = "dashboard.html";
-        }).catch(err => {
-            // 跨域/接口错误统一捕获，显示失败页面
-            msgBox.innerHTML = `Login Failed, Return to <a href="index.html">EFB Home</a>`;
-        })
+        }
     </script>
 </body>
 </html>
