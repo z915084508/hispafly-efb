@@ -117,23 +117,33 @@
     </footer>
 
     <script>
+        // VAMSYS 固定配置（后台必须和REDIRECT_URI完全一致）
         const CLIENT_ID = "909";
         const REDIRECT_URI = "https://hispafly-94hskuxui-hispafly-efb.vercel.app/efb-callback.html";
         const VAMSYS_AUTH_ENDPOINT = "https://vamsys.io/oauth/authorize";
         const SCOPE_LIST = "identity:basic identity:networks pilot:read pilot:write flights:read flights:write";
 
+        // 生成CSRF随机state
         function generateState() {
             const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
             let state = "";
-            for (let i = 0; i < 32; i++) state += chars[Math.floor(Math.random() * chars.length)];
+            for (let i = 0; i < 32; i++) {
+                state += chars[Math.floor(Math.random() * chars.length)];
+            }
             return state;
         }
+
+        // 生成PKCE原始verifier
         function generateCodeVerifier() {
             const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
             let verifier = "";
-            for (let i = 0; i < 64; i++) verifier += chars[Math.floor(Math.random() * chars.length)];
+            for (let i = 0; i < 64; i++) {
+                verifier += chars[Math.floor(Math.random() * chars.length)];
+            }
             return verifier;
         }
+
+        // SHA256 生成code_challenge
         async function generateCodeChallenge(verifier) {
             const encoder = new TextEncoder();
             const bytes = encoder.encode(verifier);
@@ -144,10 +154,14 @@
                 .replace(/=/g, "");
         }
 
+        // 登录点击逻辑：标准GET跳转，无嵌套redirect_uri（修复invalid_client核心）
         document.getElementById("loginBtn").addEventListener("click", async () => {
             const state = generateState();
             const verifier = generateCodeVerifier();
-            const challenge = await generateCodeChallenge(verifier);
+
+            // 临时存入sessionStorage，回调页面读取
+            sessionStorage.setItem("pkce_s", state);
+            sessionStorage.setItem("pkce_v", verifier);
 
             const params = new URLSearchParams({
                 response_type: "code",
@@ -155,12 +169,12 @@
                 redirect_uri: REDIRECT_URI,
                 scope: SCOPE_LIST,
                 state: state,
-                code_challenge: challenge,
+                code_challenge: await generateCodeChallenge(verifier),
                 code_challenge_method: "S256"
             });
-            // 把原始verifier、state拼到回调URL片段 #hash，不经过服务器，不会丢失
-            const fullRedirect = `${REDIRECT_URI}?${params.toString()}#v=${encodeURIComponent(verifier)}&s=${encodeURIComponent(state)}`;
-            window.location.href = `${VAMSYS_AUTH_ENDPOINT}?${params.toString()}&redirect_uri=${encodeURIComponent(fullRedirect)}`;
+
+            // 直接跳转vamsys授权页，redirect_uri仅传纯净页面，无额外嵌套参数
+            window.location.href = `${VAMSYS_AUTH_ENDPOINT}?${params.toString()}`;
         });
     </script>
 </body>
