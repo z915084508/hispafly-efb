@@ -585,6 +585,9 @@
         let accessToken = localStorage.getItem("vamsys_token");
         let currentView = "activities";
         let pilotData = null;
+        let profileData = null;
+        let rankData = null;
+        let statisticsData = null;
         let bookingsData = null;
         let pirepsData = null;
         let claimsData = null;
@@ -671,7 +674,17 @@
                     renderTelex();
                 }
             } catch (err) {
-                panel.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+                if (currentView === "activities" && /Invalid scope|403/i.test(err.message)) {
+                    panel.innerHTML = `
+                        <div class="card">
+                            <h2>Activities Permission Required</h2>
+                            <p class="error">${escapeHtml(err.message)}</p>
+                            <p style="margin-top:12px;">Enable the Activities read scope for this vAMSYS client, then log out and sign in again so the token includes the new permission.</p>
+                        </div>
+                    `;
+                } else {
+                    panel.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+                }
             }
         }
 
@@ -718,11 +731,26 @@
         }
 
         async function loadPilotProfile() {
-            const json = await fetchPilotJson("/user");
-            pilotData = json.data || {};
+            const [userResult, profileResult, rankResult, statisticsResult] = await Promise.allSettled([
+                fetchPilotJson("/user"),
+                fetchPilotJson("/profile"),
+                fetchPilotJson("/rank"),
+                fetchPilotJson("/statistics")
+            ]);
+
+            if (userResult.status === "fulfilled") {
+                pilotData = userResult.value.data || {};
+            } else {
+                throw userResult.reason;
+            }
+
+            profileData = profileResult.status === "fulfilled" ? (profileResult.value.data || {}) : {};
+            rankData = rankResult.status === "fulfilled" ? (rankResult.value.data || {}) : {};
+            statisticsData = statisticsResult.status === "fulfilled" ? (statisticsResult.value.data || {}) : {};
+
             const fullName = buildName(pilotData);
             document.getElementById("pilotName").textContent = fullName || "HISPAFLY Pilot";
-            document.getElementById("pilotRank").textContent = getRank(pilotData);
+            document.getElementById("pilotRank").textContent = getRank();
             return pilotData;
         }
 
@@ -800,9 +828,9 @@
                 ["Email", u.email],
                 ["VATSIM ID", networks.vatsim_id || u.vatsim_id],
                 ["IVAO ID", networks.ivao_id || u.ivao_id],
-                ["Pilot ID", u.id || u.pilot_id],
-                ["Total Flight Time", getFlightTime(u)],
-                ["Current Rank", getRank(u)]
+                ["Pilot ID", profileData?.id || u.pilot?.id || u.id || u.pilot_id],
+                ["Total Flight Time", getFlightTime()],
+                ["Current Rank", getRank()]
             ];
 
             document.getElementById("mainPanel").innerHTML = `
@@ -852,22 +880,151 @@
                 <div class="action-grid">
                     <div class="action-card">
                         <strong>Create Booking</strong>
-                        <p>Connects to POST /bookings for route and fleet based booking creation.</p>
+                        <div class="field">
+                            <label for="bookingRouteId">Route ID</label>
+                            <input id="bookingRouteId" inputmode="numeric" placeholder="Route ID">
+                        </div>
+                        <div class="field">
+                            <label for="bookingAircraftId">Aircraft ID</label>
+                            <input id="bookingAircraftId" inputmode="numeric" placeholder="Aircraft ID">
+                        </div>
+                        <div class="field">
+                            <label for="bookingDepartureTime">Departure Time UTC</label>
+                            <input id="bookingDepartureTime" type="datetime-local">
+                        </div>
+                        <div class="field">
+                            <label for="bookingNetwork">Network</label>
+                            <select id="bookingNetwork">
+                                <option value="offline">Offline</option>
+                                <option value="vatsim">VATSIM</option>
+                                <option value="ivao">IVAO</option>
+                                <option value="poscon">POSCON</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <button class="primary-btn" id="createBookingBtn">CREATE BOOKING</button>
                     </div>
                     <div class="action-card">
                         <strong>Dispatch Flight</strong>
-                        <p>Uses booking SimBrief and dispatch endpoints for operational release flow.</p>
+                        <div class="field">
+                            <label for="dispatchBookingId">Booking ID</label>
+                            <input id="dispatchBookingId" inputmode="numeric" placeholder="Booking ID">
+                        </div>
+                        <button class="primary-btn" id="loadSimbriefBtn">LOAD SIMBRIEF</button>
+                        <p style="margin-top:12px;">Loads operational briefing data for an existing booking.</p>
                     </div>
                     <div class="action-card">
                         <strong>File PIREP</strong>
-                        <p>Uses POST /bookings/{id}/pirep after a completed flight.</p>
+                        <div class="field">
+                            <label for="pirepBookingId">Booking ID</label>
+                            <input id="pirepBookingId" inputmode="numeric" placeholder="Booking ID">
+                        </div>
+                        <div class="field">
+                            <label for="pirepDepartureTime">Actual Departure UTC</label>
+                            <input id="pirepDepartureTime" type="datetime-local">
+                        </div>
+                        <div class="field">
+                            <label for="pirepArrivalTime">Actual Arrival UTC</label>
+                            <input id="pirepArrivalTime" type="datetime-local">
+                        </div>
+                        <div class="field">
+                            <label for="pirepPoints">Points</label>
+                            <input id="pirepPoints" inputmode="numeric" value="0">
+                        </div>
+                        <button class="primary-btn" id="filePirepBtn">FILE PIREP</button>
                     </div>
                     <div class="action-card">
                         <strong>PIREP Comments</strong>
-                        <p>Uses GET and POST /pireps/{id}/comments for crew communication.</p>
+                        <div class="field">
+                            <label for="commentPirepId">PIREP ID</label>
+                            <input id="commentPirepId" inputmode="numeric" placeholder="PIREP ID">
+                        </div>
+                        <div class="field">
+                            <label for="commentContent">Comment</label>
+                            <textarea id="commentContent" maxlength="1000" placeholder="Write comment"></textarea>
+                        </div>
+                        <button class="primary-btn" id="sendCommentBtn">SEND COMMENT</button>
+                    </div>
+                    <div class="card wide">
+                        <h2>Dispatch Result</h2>
+                        <div class="message-log" id="dispatchResult">READY</div>
                     </div>
                 </div>
             `;
+
+            document.getElementById("createBookingBtn").addEventListener("click", createBooking);
+            document.getElementById("loadSimbriefBtn").addEventListener("click", loadSimbrief);
+            document.getElementById("filePirepBtn").addEventListener("click", filePirep);
+            document.getElementById("sendCommentBtn").addEventListener("click", sendPirepComment);
+        }
+
+        async function createBooking() {
+            await runDispatchAction(async () => {
+                const body = {
+                    route_id: requiredInt("bookingRouteId", "Route ID"),
+                    aircraft_id: requiredInt("bookingAircraftId", "Aircraft ID"),
+                    departure_time: requiredDate("bookingDepartureTime", "Departure time"),
+                    network: document.getElementById("bookingNetwork").value
+                };
+                const json = await fetchPilotJson("/bookings", {}, { method: "POST", body });
+                bookingsData = null;
+                return json;
+            });
+        }
+
+        async function loadSimbrief() {
+            await runDispatchAction(async () => {
+                const id = requiredInt("dispatchBookingId", "Booking ID");
+                return await fetchPilotJson(`/bookings/${id}/simbrief`);
+            });
+        }
+
+        async function filePirep() {
+            await runDispatchAction(async () => {
+                const id = requiredInt("pirepBookingId", "Booking ID");
+                const body = {
+                    departure_time: requiredDate("pirepDepartureTime", "Actual departure"),
+                    arrival_time: requiredDate("pirepArrivalTime", "Actual arrival"),
+                    points: requiredInt("pirepPoints", "Points"),
+                    redirect_url: null
+                };
+                const json = await fetchPilotJson(`/bookings/${id}/pirep`, {}, { method: "POST", body });
+                bookingsData = null;
+                pirepsData = null;
+                return json;
+            });
+        }
+
+        async function sendPirepComment() {
+            await runDispatchAction(async () => {
+                const id = requiredInt("commentPirepId", "PIREP ID");
+                const content = document.getElementById("commentContent").value.trim();
+                if (!content) throw new Error("Comment is required.");
+                return await fetchPilotJson(`/pireps/${id}/comments`, {}, { method: "POST", body: { content } });
+            });
+        }
+
+        async function runDispatchAction(action) {
+            const resultBox = document.getElementById("dispatchResult");
+            resultBox.textContent = "SENDING REQUEST...";
+            try {
+                const result = await action();
+                resultBox.textContent = JSON.stringify(result.data ?? result, null, 2);
+            } catch (err) {
+                resultBox.innerHTML = `<span class="error">${escapeHtml(err.message)}</span>`;
+            }
+        }
+
+        function requiredInt(id, label) {
+            const value = Number.parseInt(document.getElementById(id).value, 10);
+            if (!Number.isFinite(value)) throw new Error(`${label} is required.`);
+            return value;
+        }
+
+        function requiredDate(id, label) {
+            const value = document.getElementById(id).value;
+            if (!value) throw new Error(`${label} is required.`);
+            return new Date(value).toISOString();
         }
 
         function renderTelex() {
@@ -947,16 +1104,21 @@ SERVER RELAY REQUIRED BEFORE LIVE SEND/RECEIVE</div>
             return `${formatValue(user.first_name, "")} ${formatValue(user.last_name, "")}`.trim() || user.name || "";
         }
 
-        function getRank(user) {
-            return user.rank?.name || user.rank_name || user.current_rank || user.rank || "N/A";
+        function getRank() {
+            return rankData?.name || profileData?.rank?.name || pilotData?.rank?.name || pilotData?.rank_name || "N/A";
         }
 
-        function getFlightTime(user) {
-            const value = user.stats?.flight_time || user.stats?.block_time || user.total_flight_time || user.flight_time || user.block_time;
+        function getFlightTime() {
+            const value = statisticsData?.flight_time_all_time?.formatted
+                || statisticsData?.flight_time_all_time?.seconds
+                || profileData?.flight_time
+                || pilotData?.stats?.flight_time
+                || pilotData?.total_flight_time;
             if (!value && value !== 0) return "N/A";
             if (typeof value === "number") {
-                const hours = Math.floor(value / 60);
-                const minutes = value % 60;
+                const totalMinutes = Math.floor(value / 60);
+                const hours = Math.floor(totalMinutes / 60);
+                const minutes = totalMinutes % 60;
                 return `${hours}h ${minutes}m`;
             }
             return value;
