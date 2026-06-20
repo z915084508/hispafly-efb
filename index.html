@@ -93,6 +93,42 @@
             font-size: 11px;
         }
 
+        .status-right {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .signal {
+            display: inline-flex;
+            align-items: end;
+            gap: 2px;
+            height: 12px;
+        }
+
+        .signal span {
+            width: 3px;
+            border-radius: 2px;
+            background: rgba(255,255,255,0.82);
+        }
+
+        .signal span:nth-child(1) {
+            height: 4px;
+        }
+
+        .signal span:nth-child(2) {
+            height: 7px;
+        }
+
+        .signal span:nth-child(3) {
+            height: 10px;
+        }
+
+        .signal span:nth-child(4) {
+            height: 12px;
+            background: rgba(255,255,255,0.38);
+        }
+
         .login-panel {
             position: absolute;
             top: 28px;
@@ -294,9 +330,17 @@
         <section class="device" aria-label="HISPAFLY EFB login">
             <div class="screen">
                 <div class="status-bar" aria-hidden="true">
-                    <span>06:38</span>
+                    <span id="utcTime">--:-- UTC</span>
                     <span>HISPAFLY EFB</span>
-                    <span>100%</span>
+                    <span class="status-right">
+                        <span class="signal">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </span>
+                        <span>100%</span>
+                    </span>
                 </div>
 
                 <div class="login-panel">
@@ -316,6 +360,16 @@
         const REDIRECT_URI = "https://hispafly-efb.vercel.app/efb-callback.html";
         const VAMSYS_AUTH_ENDPOINT = "https://vamsys.io/oauth/authorize";
         const SCOPE_LIST = "identity:basic identity:networks pilot:read pilot:write flights:read";
+
+        function updateUtcTime() {
+            const now = new Date();
+            const hours = String(now.getUTCHours()).padStart(2, "0");
+            const minutes = String(now.getUTCMinutes()).padStart(2, "0");
+            document.getElementById("utcTime").textContent = `${hours}:${minutes} UTC`;
+        }
+
+        updateUtcTime();
+        setInterval(updateUtcTime, 30000);
 
         function generateState() {
             const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
