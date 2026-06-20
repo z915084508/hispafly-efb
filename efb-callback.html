@@ -19,6 +19,7 @@
 <body>
     <h2 id="msg">Verifying VAMSYS Login...</h2>
     <script>
+        console.log("===== Callback Script Start =====");
         const CLIENT_ID = "909";
         const REDIRECT_URI = "https://hispafly-94hskuxui-hispafly-efb.vercel.app/efb-callback.html";
         const TOKEN_URL = "/api/token-proxy";
@@ -27,18 +28,25 @@
         const urlParams = new URLSearchParams(location.search);
         const authCode = urlParams.get("code");
         const returnState = urlParams.get("state");
+        console.log("URL code:", authCode);
+        console.log("URL state:", returnState);
 
-        // 读取登录页存入的PKCE与state
-        const savedState = sessionStorage.getItem("pkce_s");
-        const savedVerifier = sessionStorage.getItem("pkce_v");
+        // 双存储兜底读取
+        let savedState = sessionStorage.getItem("pkce_s");
+        let savedVerifier = sessionStorage.getItem("pkce_v");
+        if (!savedState) savedState = localStorage.getItem("pkce_s");
+        if (!savedVerifier) savedVerifier = localStorage.getItem("pkce_v");
+        console.log("Loaded state:", savedState);
+        console.log("Loaded verifier:", savedVerifier);
 
-        // 校验逻辑
         if (!returnState || returnState !== savedState) {
+            console.error("Error: State mismatch or empty");
             msgDom.innerHTML = `Login Failed, Return to <a href="index.html">EFB Home</a>`;
         } else if (!authCode || !savedVerifier) {
+            console.error("Error: Missing code or PKCE verifier");
             msgDom.innerHTML = `Login Failed, Return to <a href="index.html">EFB Home</a>`;
         } else {
-            // 后端代理交换token
+            console.log("Validation passed, request token via proxy");
             fetch(TOKEN_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -50,15 +58,18 @@
                     code_verifier: savedVerifier
                 })
             }).then(async res => {
+                console.log("Proxy response status:", res.status);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
+                console.log("Get access_token success");
                 localStorage.setItem("vamsys_token", data.access_token);
-                // 清理临时session缓存
-                sessionStorage.removeItem("pkce_s");
-                sessionStorage.removeItem("pkce_v");
+                // 清理缓存
+                sessionStorage.clear();
+                localStorage.removeItem("pkce_s");
+                localStorage.removeItem("pkce_v");
                 window.location.href = "dashboard.html";
             }).catch(err => {
-                console.error("Token exchange error:", err);
+                console.error("Token exchange failed:", err);
                 msgDom.innerHTML = `Login Failed, Return to <a href="index.html">EFB Home</a>`;
             })
         }
