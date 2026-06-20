@@ -127,10 +127,9 @@
         // ===================== 此处修改为你当前生效配置 =====================
             const CLIENT_ID = "909";
             const REDIRECT_URI = "https://hispafly-94hskuxui-hispafly-efb.vercel.app/efb-callback.html";
-            const VAMSYS_AUTH_ENDPOINT = "https://auth.vamsys.co/oauth/authorize";
+            const VAMSYS_AUTH_ENDPOINT = "https://vamsys.io/oauth/authorize";
             const SCOPE_LIST = "identity:basic identity:networks pilot:read pilot:write flights:read flights:write";
 // ===================================================================
-
         // PKCE 加密工具函数
         async function generateCodeChallenge(verifier) {
             const encoder = new TextEncoder();
