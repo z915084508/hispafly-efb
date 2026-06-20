@@ -117,37 +117,23 @@
     </footer>
 
     <script>
-        // VAMSYS 基础配置
         const CLIENT_ID = "909";
         const REDIRECT_URI = "https://hispafly-94hskuxui-hispafly-efb.vercel.app/efb-callback.html";
         const VAMSYS_AUTH_ENDPOINT = "https://vamsys.io/oauth/authorize";
         const SCOPE_LIST = "identity:basic identity:networks pilot:read pilot:write flights:read flights:write";
 
-        // 生成CSRF state 双缓存
         function generateState() {
             const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
             let state = "";
-            for (let i = 0; i < 32; i++) {
-                state += chars[Math.floor(Math.random() * chars.length)];
-            }
-            sessionStorage.setItem("oauth_state", state);
-            localStorage.setItem("oauth_state", state);
+            for (let i = 0; i < 32; i++) state += chars[Math.floor(Math.random() * chars.length)];
             return state;
         }
-
-        // PKCE verifier 生成 双缓存
         function generateCodeVerifier() {
             const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
             let verifier = "";
-            for (let i = 0; i < 64; i++) {
-                verifier += chars[Math.floor(Math.random() * chars.length)];
-            }
-            sessionStorage.setItem("code_verifier", verifier);
-            localStorage.setItem("code_verifier", verifier);
+            for (let i = 0; i < 64; i++) verifier += chars[Math.floor(Math.random() * chars.length)];
             return verifier;
         }
-
-        // SHA256 生成challenge
         async function generateCodeChallenge(verifier) {
             const encoder = new TextEncoder();
             const bytes = encoder.encode(verifier);
@@ -158,7 +144,6 @@
                 .replace(/=/g, "");
         }
 
-        // 登录点击：纯页面跳转GET，无POST请求（解决403核心）
         document.getElementById("loginBtn").addEventListener("click", async () => {
             const state = generateState();
             const verifier = generateCodeVerifier();
@@ -173,8 +158,9 @@
                 code_challenge: challenge,
                 code_challenge_method: "S256"
             });
-
-            window.location.href = `${VAMSYS_AUTH_ENDPOINT}?${params.toString()}`;
+            // 把原始verifier、state拼到回调URL片段 #hash，不经过服务器，不会丢失
+            const fullRedirect = `${REDIRECT_URI}?${params.toString()}#v=${encodeURIComponent(verifier)}&s=${encodeURIComponent(state)}`;
+            window.location.href = `${VAMSYS_AUTH_ENDPOINT}?${params.toString()}&redirect_uri=${encodeURIComponent(fullRedirect)}`;
         });
     </script>
 </body>
