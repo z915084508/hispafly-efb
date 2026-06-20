@@ -19,43 +19,36 @@
 <body>
     <h2 id="msg">Verifying VAMSYS Login...</h2>
     <script>
-        console.log("===== Callback Script Start =====");
         const CLIENT_ID = "909";
         const REDIRECT_URI = "https://hispafly-94hskuxui-hispafly-efb.vercel.app/efb-callback.html";
-        // Vercel Serverless代理地址，规避CORS
         const TOKEN_URL = "/api/token-proxy";
-        const params = new URLSearchParams(location.search);
-        const code = params.get("code");
-        const stateReturn = params.get("state");
-
-        console.log("Get code from URL:", code);
-        console.log("Get state from URL:", stateReturn);
-
-        // 双存储读取
-        const stateSession = sessionStorage.getItem("oauth_state");
-        const stateLocal = localStorage.getItem("oauth_state");
-        const verifierSession = sessionStorage.getItem("code_verifier");
-        const verifierLocal = localStorage.getItem("code_verifier");
-        const validState = stateSession || stateLocal;
-        const validVerifier = verifierSession || verifierLocal;
         const msgDom = document.getElementById("msg");
 
-        console.log("Saved state:", validState);
-        console.log("Saved code_verifier:", validVerifier);
+        // 1. 拆分URL
+        const fullUrl = new URL(location.href);
+        const searchParams = new URLSearchParams(fullUrl.search);
+        const hashParams = new URLSearchParams(fullUrl.hash.replace("#", ""));
 
-        // 校验1 state不一致
-        if (!stateReturn || stateReturn !== validState) {
-            console.error("Failed: State mismatch");
+        const authCode = searchParams.get("code");
+        const urlState = searchParams.get("state");
+        const savedVerifier = decodeURIComponent(hashParams.get("v") || "");
+        const savedState = decodeURIComponent(hashParams.get("s") || "");
+
+        console.log("code:", authCode);
+        console.log("url state:", urlState);
+        console.log("hash verifier:", savedVerifier);
+        console.log("hash state:", savedState);
+
+        // 校验1：state匹配
+        if (!urlState || urlState !== savedState) {
             msgDom.innerHTML = `Login Failed, Return to <a href="index.html">EFB Home</a>`;
         }
-        // 校验2 缺失code/verifier
-        else if (!code || !validVerifier) {
-            console.error("Failed: Missing code or PKCE verifier");
+        // 校验2：缺少code或verifier
+        else if (!authCode || !savedVerifier) {
             msgDom.innerHTML = `Login Failed, Return to <a href="index.html">EFB Home</a>`;
         }
-        // 走后端代理交换token
+        // 交换Token
         else {
-            console.log("Check passed, start request token via proxy");
             fetch(TOKEN_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -63,23 +56,16 @@
                     grant_type: "authorization_code",
                     client_id: CLIENT_ID,
                     redirect_uri: REDIRECT_URI,
-                    code: code,
-                    code_verifier: validVerifier
+                    code: authCode,
+                    code_verifier: savedVerifier
                 })
             }).then(async res => {
-                console.log("Proxy response status:", res.status);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
-                console.log("Get access_token success");
                 localStorage.setItem("vamsys_token", data.access_token);
-                // 清理临时缓存
-                sessionStorage.clear();
-                localStorage.removeItem("oauth_state");
-                localStorage.removeItem("code_verifier");
-                // 跳转仪表盘
                 window.location.href = "dashboard.html";
             }).catch(err => {
-                console.error("Token exchange error:", err);
+                console.error(err);
                 msgDom.innerHTML = `Login Failed, Return to <a href="index.html">EFB Home</a>`;
             })
         }
