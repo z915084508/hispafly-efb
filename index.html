@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hispafly Mobile EFB</title>
+</head>
+<body style="text-align:center;margin-top:100px;font-family:Arial;">
+    <h1>Hispafly EFB</h1>
+    <p>Virtual Airline Electronic Flight Bag</p>
+    <button id="loginBtn" style="padding:15px 30px;font-size:18px;cursor:pointer;">Login with VAMSYS</button>
+
+    <script>
+        // 这里替换成你自己的Client ID和Vercel网址
+        const CLIENT_ID = "粘贴你记事本里的VAMSYS Client ID";
+        const REDIRECT_URI = "https://xxx-hispafly-efb.vercel.app/efb-callback";
+        const VAMSYS_AUTH_URL = "https://auth.vamsys.co/oauth/authorize";
+
+        document.getElementById("loginBtn").addEventListener("click", () => {
+            // PKCE 随机加密串（模板自带逻辑，不用修改）
+            const codeVerifier = crypto.randomUUID() + crypto.randomUUID();
+            sessionStorage.setItem("code_verifier", codeVerifier);
+            async function getChallenge(v){
+                const encoder = new TextEncoder();
+                const data = encoder.encode(v);
+                const sha256 = await crypto.subtle.digest("SHA-256", data);
+                return btoa(String.fromCharCode(...new Uint8Array(sha256)))
+                    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+            }
+            getChallenge(codeVerifier).then(challenge => {
+                const params = new URLSearchParams({
+                    response_type: "code",
+                    client_id: CLIENT_ID,
+                    redirect_uri: REDIRECT_URI,
+                    code_challenge: challenge,
+                    code_challenge_method: "S256",
+                    scope: "identity:basic identity:networks pilot:read pilot:write flights:read flights:write"
+                });
+                window.location.href = `${VAMSYS_AUTH_URL}?${params.toString()}`;
+            })
+        })
+    </script>
+</body>
+</html>
