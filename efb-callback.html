@@ -18,25 +18,28 @@
     </style>
 </head>
 <body>
-    <div id="tip">Processing Authorization...</div>
+    <div id="tip">Verifying VAMSYS Login...</div>
     <script>
         const CLIENT_ID = "909";
         const REDIRECT_URI = "https://hispafly-94hskuxui-hispafly-efb.vercel.app/efb-callback.html";
-        const TOKEN_URL = "https://vamsys.io/oauth/token";
+        // 本地代理地址，解决CORS跨域
+        const TOKEN_URL = "/api/vamsys-token";
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get("code");
         const stateReturn = urlParams.get("state");
-        const savedState = sessionStorage.getItem("oauth_state");
-        const codeVerifier = sessionStorage.getItem("code_verifier");
+
+        // 双重读取备份，防止session丢失
+        const savedState = sessionStorage.getItem("oauth_state") || localStorage.getItem("oauth_state");
+        const codeVerifier = sessionStorage.getItem("code_verifier") || localStorage.getItem("code_verifier");
         const tipBox = document.getElementById("tip");
 
-        // CSRF state校验
         if(!stateReturn || stateReturn !== savedState) {
-            tipBox.innerText = "Login Failed: Invalid CSRF State, Please retry login";
+            tipBox.innerText = "Login Failed: CSRF State Mismatch, Return to Login";
+            setTimeout(()=>window.location.href="index.html",2500);
         } else if(!code || !codeVerifier) {
-            tipBox.innerText = "Login Failed: Missing auth code or PKCE verifier";
+            tipBox.innerText = "Login Failed: Missing PKCE Data, Retry Login";
+            setTimeout(()=>window.location.href="index.html",2500);
         } else {
-            // 交换Token
             fetch(TOKEN_URL, {
                 method:"POST",
                 headers:{"Content-Type":"application/x-www-form-urlencoded"},
@@ -47,19 +50,25 @@
                     code:code,
                     code_verifier:codeVerifier
                 })
-            }).then(res=>{
-                if(!res.ok) throw new Error("Invalid grant / code expired");
+            }).then(async res=>{
+                if(!res.ok) {
+                    const errText = await res.text();
+                    throw new Error(`Request error ${res.status}: ${errText}`);
+                }
                 return res.json();
             }).then(data=>{
+                // 持久存储access_token
                 localStorage.setItem("vamsys_token", data.access_token);
-                // 清除临时PKCE/state缓存
+                // 清理临时缓存
                 sessionStorage.removeItem("code_verifier");
                 sessionStorage.removeItem("oauth_state");
+                localStorage.removeItem("code_verifier");
+                localStorage.removeItem("oauth_state");
                 // 跳转仪表盘
                 window.location.href = "dashboard.html";
             }).catch(err=>{
-                tipBox.innerText = `Login Failed: ${err.message}, Go back to login page`;
-                setTimeout(()=>window.location.href="index.html",3000);
+                tipBox.innerText = `Verify Failed: ${err.message}\nRedirecting to login...`;
+                setTimeout(()=>window.location.href="index.html",4000);
             })
         }
     </script>
