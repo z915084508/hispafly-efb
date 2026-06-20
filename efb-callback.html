@@ -14,37 +14,62 @@
         a {
             color: #0066cc;
         }
+        pre {
+            max-width: 720px;
+            margin: 24px auto;
+            padding: 16px;
+            text-align: left;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 14px;
+            background: #f2e9d8;
+            border-radius: 10px;
+        }
     </style>
 </head>
 <body>
     <h2 id="msg">Verifying VAMSYS Login...</h2>
+    <pre id="details" style="display:none"></pre>
     <script>
         console.log("===== Callback Script Start =====");
         const CLIENT_ID = "909";
-        const REDIRECT_URI = "https://hispafly-94hskuxui-hispafly-efb.vercel.app/efb-callback.html";
         const TOKEN_URL = "/api/token-proxy";
         const msgDom = document.getElementById("msg");
+        const detailsDom = document.getElementById("details");
 
         const urlParams = new URLSearchParams(location.search);
         const authCode = urlParams.get("code");
         const returnState = urlParams.get("state");
+        const oauthError = urlParams.get("error");
+        const oauthErrorDescription = urlParams.get("error_description");
         console.log("URL code:", authCode);
         console.log("URL state:", returnState);
 
-        // 双存储兜底读取
-        let savedState = sessionStorage.getItem("pkce_s");
-        let savedVerifier = sessionStorage.getItem("pkce_v");
-        if (!savedState) savedState = localStorage.getItem("pkce_s");
-        if (!savedVerifier) savedVerifier = localStorage.getItem("pkce_v");
-        console.log("Loaded state:", savedState);
-        console.log("Loaded verifier:", savedVerifier);
+        function getStoredValue(key) {
+            return sessionStorage.getItem(key) || localStorage.getItem(key) || "";
+        }
+        function fail(message, details = "") {
+            console.error(message, details);
+            msgDom.innerHTML = `${message}, Return to <a href="index.html">EFB Home</a>`;
+            if (details) {
+                detailsDom.style.display = "block";
+                detailsDom.textContent = details;
+            }
+        }
 
-        if (!returnState || returnState !== savedState) {
-            console.error("Error: State mismatch or empty");
-            msgDom.innerHTML = `Login Failed, Return to <a href="index.html">EFB Home</a>`;
+        const savedState = getStoredValue("pkce_s");
+        const savedVerifier = getStoredValue("pkce_v");
+        const redirectUri = getStoredValue("oauth_redirect_uri") || `${window.location.origin}/efb-callback.html`;
+        console.log("Loaded state:", savedState);
+        console.log("Loaded verifier:", savedVerifier ? "present" : "missing");
+        console.log("Redirect URI:", redirectUri);
+
+        if (oauthError) {
+            fail("Login Failed", `${oauthError}\n${oauthErrorDescription || ""}`.trim());
+        } else if (!returnState || returnState !== savedState) {
+            fail("Login Failed", "State mismatch. Please start the login again from this same site URL.");
         } else if (!authCode || !savedVerifier) {
-            console.error("Error: Missing code or PKCE verifier");
-            msgDom.innerHTML = `Login Failed, Return to <a href="index.html">EFB Home</a>`;
+            fail("Login Failed", "Missing authorization code or PKCE verifier. Please start the login again.");
         } else {
             console.log("Validation passed, request token via proxy");
             fetch(TOKEN_URL, {
@@ -53,25 +78,35 @@
                 body: new URLSearchParams({
                     grant_type: "authorization_code",
                     client_id: CLIENT_ID,
-                    redirect_uri: REDIRECT_URI,
+                    redirect_uri: redirectUri,
                     code: authCode,
                     code_verifier: savedVerifier
                 })
             }).then(async res => {
                 console.log("Proxy response status:", res.status);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
+                const text = await res.text();
+                let data = {};
+                try {
+                    data = JSON.parse(text);
+                } catch (err) {
+                    throw new Error(`Token proxy returned non-JSON: ${text.slice(0, 600)}`);
+                }
+                if (!res.ok) {
+                    throw new Error(JSON.stringify(data, null, 2));
+                }
+                if (!data.access_token) {
+                    throw new Error(`Token response did not include access_token: ${JSON.stringify(data, null, 2)}`);
+                }
                 console.log("Get access_token success");
                 localStorage.setItem("vamsys_token", data.access_token);
-                // 清理缓存
                 sessionStorage.clear();
                 localStorage.removeItem("pkce_s");
                 localStorage.removeItem("pkce_v");
+                localStorage.removeItem("oauth_redirect_uri");
                 window.location.href = "dashboard.html";
             }).catch(err => {
-                console.error("Token exchange failed:", err);
-                msgDom.innerHTML = `Login Failed, Return to <a href="index.html">EFB Home</a>`;
-            })
+                fail("Login Failed", `Token exchange failed:\n${err.message || err}`);
+            });
         }
     </script>
 </body>
