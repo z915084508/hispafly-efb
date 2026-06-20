@@ -117,39 +117,37 @@
     </footer>
 
     <script>
-        // ===================== VAMSYS OAuth Fixed Config =====================
+        // VAMSYS 基础配置
         const CLIENT_ID = "909";
         const REDIRECT_URI = "https://hispafly-94hskuxui-hispafly-efb.vercel.app/efb-callback.html";
         const VAMSYS_AUTH_ENDPOINT = "https://vamsys.io/oauth/authorize";
         const SCOPE_LIST = "identity:basic identity:networks pilot:read pilot:write flights:read flights:write";
-        // ===================================================================
 
-        // 生成随机state CSRF串
-function generateState() {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    let state = "";
-    for (let i = 0; i < 32; i++) {
-        state += chars[Math.floor(Math.random() * chars.length)];
-    }
-    // 双存储，防止无痕清空session
-    sessionStorage.setItem("oauth_state", state);
-    localStorage.setItem("oauth_state", state);
-    return state;
-}
+        // 生成CSRF state 双缓存
+        function generateState() {
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            let state = "";
+            for (let i = 0; i < 32; i++) {
+                state += chars[Math.floor(Math.random() * chars.length)];
+            }
+            sessionStorage.setItem("oauth_state", state);
+            localStorage.setItem("oauth_state", state);
+            return state;
+        }
 
-// 生成PKCE Code Verifier & Code Challenge SHA256 S256
-function generateCodeVerifier() {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
-    let verifier = "";
-    for (let i = 0; i < 64; i++) {
-        verifier += chars[Math.floor(Math.random() * chars.length)];
-    }
-    // 双存储
-    sessionStorage.setItem("code_verifier", verifier);
-    localStorage.setItem("code_verifier", verifier);
-    return verifier;
-}
+        // PKCE verifier 生成 双缓存
+        function generateCodeVerifier() {
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+            let verifier = "";
+            for (let i = 0; i < 64; i++) {
+                verifier += chars[Math.floor(Math.random() * chars.length)];
+            }
+            sessionStorage.setItem("code_verifier", verifier);
+            localStorage.setItem("code_verifier", verifier);
+            return verifier;
+        }
 
+        // SHA256 生成challenge
         async function generateCodeChallenge(verifier) {
             const encoder = new TextEncoder();
             const bytes = encoder.encode(verifier);
@@ -160,7 +158,7 @@ function generateCodeVerifier() {
                 .replace(/=/g, "");
         }
 
-        // Login Button Click Handler
+        // 登录点击：纯页面跳转GET，无POST请求（解决403核心）
         document.getElementById("loginBtn").addEventListener("click", async () => {
             const state = generateState();
             const verifier = generateCodeVerifier();
