@@ -256,7 +256,7 @@ async function sendDclRequest() {
         return;
     }
 
-    const packet = `REQUEST PREDEP CLEARANCE ${callsign} ${aircraftType} ${dep} TO ${arr} AT ${dep} STAND ${stand} ATIS ${atis}${remarks ? ` ${remarks}` : ""}`;
+    const packet = `REQUEST PREDEP CLEARANCE ${callsign} ${aircraftType} TO ${arr} AT ${dep} STAND ${stand} ATIS ${atis}${remarks ? ` ${remarks}` : ""}`;
     await hoppieRequest("send", {
         to: document.getElementById("dclTo").value.trim().toUpperCase() || context.dep || "SERVER",
         type: "TELEX",
@@ -397,6 +397,9 @@ function handleHoppieMessages(messages) {
         if (parsed?.text?.includes("LOGOFF")) {
             telexState.currentAtcUnit = "";
             telexState.pendingLogon = "";
+        }
+        if (parsed?.text?.includes("FLIGHT PLAN NOT HELD")) {
+            appendTelexLog("DCL REJECTED: ATC/HOPPIE STATION DOES NOT HOLD A MATCHING FLIGHT PLAN. CHECK CALLSIGN, DEP/ARR, AND WAIT FOR THE STATION TO IMPORT THE VATSIM PLAN.");
         }
         addTelexMessage({
             direction: "IN",

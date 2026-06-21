@@ -83,6 +83,17 @@ function parseHoppieResponse(text) {
   const cleanText = clean(text);
   if (!cleanText || cleanText.toUpperCase() === "OK") return [];
 
+  const nestedMatches = [...cleanText.matchAll(/\{(\S+)\s+(\S+)\s+\{([^{}]*)\}\}/g)];
+  if (nestedMatches.length) {
+    return nestedMatches.map((match, index) => ({
+      id: String(index + 1),
+      from: match[1],
+      type: match[2],
+      packet: match[3],
+      raw: `${match[1]} ${match[2]} ${match[3]}`
+    }));
+  }
+
   const braceMatches = [...cleanText.matchAll(/\{([^{}]+)\}/g)];
   if (braceMatches.length) {
     return braceMatches.map((match, index) => parseHoppieLine(match[1], String(index + 1)));
