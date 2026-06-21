@@ -544,11 +544,10 @@ function decodeHoppieText(value) {
     return String(value || "")
         .replace(/\{[^}]*\}/g, "")
         .replace(/@@/g, " N/A ")
-        .replace(/@/g, "\n")
+        .replace(/@/g, " ")
         .replace(/_/g, " ")
         .replace(/[ \t]+/g, " ")
-        .replace(/\n\s+/g, "\n")
-        .replace(/\s+\n/g, "\n")
+        .replace(/\s+([.,;:])/g, "$1")
         .trim();
 }
 
