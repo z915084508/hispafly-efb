@@ -4,6 +4,7 @@ let cdmAirportFlights = [];
 let cdmAirportCode = "";
 let cdmRefreshTimer = null;
 let cdmLastUpdated = "";
+let cdmExcludedAirborne = 0;
 const CDM_REFRESH_MS = 30000;
 
 function renderCdmAirport() {
@@ -65,14 +66,20 @@ async function loadCdmAirportStatus(silent = false) {
 
     if (!silent) result.innerHTML = `<p class="empty">Loading CDM status for ${escapeHtml(airport)}...</p>`;
     try {
-        const res = await fetch(`/api/cdm-airport?airport=${encodeURIComponent(airport)}`);
-        const json = await res.json();
-        if (!res.ok || json.error) throw new Error(json.message || json.error || `CDM HTTP ${res.status}`);
-        const flights = Array.isArray(json) ? json : (Array.isArray(json.data) ? json.data : []);
-        cdmAirportFlights = flights;
+        const [cdmResult, vatsimResult] = await Promise.allSettled([
+            fetchCdmAirportFlights(airport),
+            fetchVatsimPilots()
+        ]);
+
+        if (cdmResult.status === "rejected") throw cdmResult.reason;
+
+        const vatsimPilots = vatsimResult.status === "fulfilled" ? vatsimResult.value : [];
+        const { groundFlights, excludedAirborne } = filterCdmGroundQueue(cdmResult.value, vatsimPilots, airport);
+        cdmAirportFlights = groundFlights;
+        cdmExcludedAirborne = excludedAirborne;
         cdmAirportCode = airport;
         cdmLastUpdated = new Date().toISOString();
-        result.innerHTML = renderCdmAirportData(airport, flights, cdmCallsignLastSearch);
+        result.innerHTML = renderCdmAirportData(airport, groundFlights, cdmCallsignLastSearch);
         startCdmAutoRefresh();
     } catch (err) {
         if (!silent) {
@@ -103,6 +110,86 @@ function requestCdmPlaneStatus() {
     result.innerHTML = renderCdmAirportData(cdmAirportCode || "AIRPORT", cdmAirportFlights, callsign);
 }
 
+async function fetchCdmAirportFlights(airport) {
+    const res = await fetch(`/api/cdm-airport?airport=${encodeURIComponent(airport)}`);
+    const json = await res.json();
+    if (!res.ok || json.error) throw new Error(json.message || json.error || `CDM HTTP ${res.status}`);
+    return Array.isArray(json) ? json : (Array.isArray(json.data) ? json.data : []);
+}
+
+async function fetchVatsimPilots() {
+    const res = await fetch("/api/vatsim-data");
+    const json = await res.json();
+    if (!res.ok || json.error) throw new Error(json.message || json.error || `VATSIM HTTP ${res.status}`);
+    return Array.isArray(json?.pilots) ? json.pilots : [];
+}
+
+function filterCdmGroundQueue(cdmFlights, vatsimPilots, airport) {
+    const vatsimByCallsign = new Map(
+        vatsimPilots
+            .filter((pilot) => pilot?.callsign)
+            .map((pilot) => [String(pilot.callsign).toUpperCase(), pilot])
+    );
+    let excludedAirborne = 0;
+    const groundFlights = [];
+
+    cdmFlights.forEach((flight) => {
+        const callsign = String(flight.callsign || "").toUpperCase();
+        const vatsim = vatsimByCallsign.get(callsign);
+        const state = classifyVatsimGroundState(vatsim, airport);
+        if (state.airborne) {
+            excludedAirborne += 1;
+            return;
+        }
+        groundFlights.push({
+            ...flight,
+            vatsimState: state
+        });
+    });
+
+    return { groundFlights, excludedAirborne };
+}
+
+function classifyVatsimGroundState(pilot, airport) {
+    if (!pilot) {
+        return { label: "Not online", detail: "Kept in queue", airborne: false };
+    }
+
+    const altitude = Number(pilot.altitude);
+    const groundspeed = Number(pilot.groundspeed);
+    const flightPlan = pilot.flight_plan || {};
+    const fpDeparture = String(flightPlan.departure || "").toUpperCase();
+    const fpArrival = String(flightPlan.arrival || "").toUpperCase();
+    const fromAirport = !fpDeparture || fpDeparture === airport;
+    const isClearlyAirborne = (
+        (Number.isFinite(groundspeed) && groundspeed >= 120) ||
+        (Number.isFinite(groundspeed) && groundspeed >= 80 && Number.isFinite(altitude) && altitude >= 1500) ||
+        (!fromAirport && Number.isFinite(altitude) && altitude >= 2500)
+    );
+
+    if (fromAirport && !isClearlyAirborne) {
+        return {
+            label: "On ground",
+            detail: `ALT ${formatValue(pilot.altitude)} / GS ${formatValue(pilot.groundspeed)}`,
+            airborne: false
+        };
+    }
+
+    if (isClearlyAirborne) {
+        return {
+            label: "Airborne",
+            detail: `${formatValue(fpDeparture, airport)}-${formatValue(fpArrival)} ALT ${formatValue(pilot.altitude)} / GS ${formatValue(pilot.groundspeed)}`,
+            airborne: true
+        };
+    }
+
+    return {
+        label: "Online",
+        detail: `ALT ${formatValue(pilot.altitude)} / GS ${formatValue(pilot.groundspeed)}`,
+        airborne: false
+    };
+}
+
 function renderCdmAirportData(airport, flights, callsignFilter = "") {
     if (!Array.isArray(flights) || flights.length === 0) {
         return `<p class="empty">No CDM aircraft returned for ${escapeHtml(airport)}.</p>`;
@@ -118,8 +205,9 @@ function renderCdmAirportData(airport, flights, callsignFilter = "") {
     return `
         <div class="cdm-summary">
             ${cdmStat("Airport", airport)}
-            ${cdmStat("Aircraft", sorted.length)}
+            ${cdmStat("Ground Queue", sorted.length)}
             ${cdmStat("Active", activeCount)}
+            ${cdmStat("Airborne Removed", cdmExcludedAirborne)}
             ${cdmStat(callsignFilter ? "Matches" : "Confirmed", callsignFilter ? filtered.length : confirmedCount)}
         </div>
         <div class="cdm-refresh-row">
@@ -162,9 +250,13 @@ function renderCdmFlight(flight, sequence, callsignFilter = "") {
             <div class="meta">
                 <span>DEP: ${escapeHtml(formatValue(flight.departure))}</span>
                 <span>ARR: ${escapeHtml(formatValue(flight.arrival))}</span>
-                <span>CID: ${escapeHtml(formatValue(flight.cid))}</span>
+                <span>VATSIM: ${escapeHtml(formatValue(flight.vatsimState?.label, "Unknown"))}</span>
             </div>
             <div class="cdm-data-grid">
+                <div class="cdm-data-cell">
+                    <span>Live State</span>
+                    <strong>${escapeHtml(formatValue(flight.vatsimState?.detail, "No match"))}</strong>
+                </div>
                 ${cdmRows.map(([label, value]) => `
                     <div class="cdm-data-cell">
                         <span>${escapeHtml(label)}</span>
