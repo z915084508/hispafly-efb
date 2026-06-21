@@ -625,6 +625,72 @@
             font-weight: 800;
         }
 
+        .cdm-summary {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .cdm-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .cdm-stat {
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 12px;
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .cdm-stat span {
+            display: block;
+            color: var(--muted);
+            font-size: 11px;
+            margin-bottom: 4px;
+        }
+
+        .cdm-stat strong {
+            display: block;
+            color: #fff;
+            font-size: 16px;
+        }
+
+        .cdm-flight {
+            border-color: rgba(255,196,0,0.18);
+        }
+
+        .cdm-data-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .cdm-data-cell {
+            min-height: 54px;
+            border: 1px solid rgba(255,255,255,0.09);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.04);
+            padding: 8px;
+        }
+
+        .cdm-data-cell span {
+            display: block;
+            color: var(--muted);
+            font-size: 10px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .cdm-data-cell strong {
+            display: block;
+            color: #fff;
+            font-size: 13px;
+            overflow-wrap: anywhere;
+        }
+
         .message-log {
             min-height: 350px;
             border-radius: 16px;
@@ -859,6 +925,8 @@
             .telex,
             .telex-workbench,
             .telex-menu-grid,
+            .cdm-summary,
+            .cdm-data-grid,
             .weather-form {
                 grid-template-columns: 1fr;
             }

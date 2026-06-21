@@ -71,7 +71,8 @@
                 pirepLogbook: ["Logbook", "PIREP Logbook", "Select a PIREP to open the full pilot report."],
                 flightCenter: ["Flights", "Flight Center", "Current bookings and dispatch documents."],
                 weather: ["Weather", "WX Info", "Request weather information by airport ICAO."],
-                telex: ["ACARS", "TELEX", "Hoppie ACARS style logon, inbox, and telex compose station."]
+                telex: ["ACARS", "TELEX", "Hoppie ACARS style logon, inbox, and telex compose station."],
+                cdmAirport: ["Airport CDM", "CDM Airport Status", "Airport departure queue and ATFCM status."]
             }[view];
             document.getElementById("viewEyebrow").textContent = copy[0];
             document.getElementById("viewTitle").textContent = copy[1];
@@ -100,6 +101,8 @@
                 } else if (currentView === "telex") {
                     if (!bookingsData || force) bookingsData = await loadBookings();
                     renderTelex();
+                } else if (currentView === "cdmAirport") {
+                    renderCdmAirport();
                 }
             } catch (err) {
                 panel.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
