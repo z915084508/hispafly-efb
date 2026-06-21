@@ -36,6 +36,10 @@
         function setupNavigation() {
             document.querySelectorAll(".menu-btn, .submenu-btn").forEach((button) => {
                 button.addEventListener("click", () => {
+                    if (button.dataset.action === "logout") {
+                        logout();
+                        return;
+                    }
                     if (button.dataset.link) {
                         window.location.href = button.dataset.link;
                         return;
@@ -52,6 +56,9 @@
         }
 
         async function setView(view) {
+            if (currentView === "cdmAirport" && view !== "cdmAirport" && typeof stopCdmAutoRefresh === "function") {
+                stopCdmAutoRefresh();
+            }
             currentView = view;
             document.querySelectorAll(".menu-btn, .submenu-btn").forEach((button) => {
                 button.classList.toggle("active", button.dataset.view === view);

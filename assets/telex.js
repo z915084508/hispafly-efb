@@ -126,6 +126,10 @@ function renderDclPage(context) {
             </div>
             <div class="grid" style="gap:10px;">
                 <div class="field">
+                    <label for="dclAircraftType">A/C Type</label>
+                    <input id="dclAircraftType" autocomplete="off" maxlength="8" placeholder="A21N" value="${escapeHtml(context.aircraftType)}">
+                </div>
+                <div class="field">
                     <label for="dclStand">Stand</label>
                     <input id="dclStand" autocomplete="off" placeholder="A12">
                 </div>
@@ -139,6 +143,7 @@ function renderDclPage(context) {
                 <input id="dclRemarks" autocomplete="off" maxlength="90" placeholder="Optional">
             </div>
             <button class="primary-btn" id="sendDclBtn">REQUEST DCL</button>
+            <button class="logout-btn" style="width:100%;margin-top:10px;" id="loadVatsimPlanBtn">LOAD VATSIM FLIGHT PLAN</button>
         </section>
     `;
 }
@@ -197,6 +202,7 @@ function bindTelexWorkbench() {
     document.getElementById("sendDclBtn")?.addEventListener("click", sendDclRequest);
     document.getElementById("sendCpdlcRequestBtn")?.addEventListener("click", sendCpdlcRequest);
     document.getElementById("loadVatsimPlanBtn")?.addEventListener("click", loadVatsimFlightPlan);
+    bindReplyButtons();
 }
 
 async function connectTelex() {
@@ -240,16 +246,17 @@ async function sendDclRequest() {
     const callsign = getTelexCallsign();
     const dep = document.getElementById("fpDep").textContent.trim();
     const arr = document.getElementById("fpArr").textContent.trim();
+    const aircraftType = document.getElementById("dclAircraftType").value.trim().toUpperCase();
     const stand = document.getElementById("dclStand").value.trim().toUpperCase();
     const atis = document.getElementById("dclAtis").value.trim().toUpperCase();
     const remarks = document.getElementById("dclRemarks").value.trim().toUpperCase();
 
-    if (!stand || !atis) {
-        appendTelexLog("STAND AND ATIS ARE REQUIRED FOR DCL");
+    if (!aircraftType || !stand || !atis) {
+        appendTelexLog("A/C TYPE, STAND AND ATIS ARE REQUIRED FOR DCL");
         return;
     }
 
-    const packet = `REQUEST PREDEP CLEARANCE ${callsign} ${dep} TO ${arr} AT ${dep} STAND ${stand} ATIS ${atis}${remarks ? ` ${remarks}` : ""}`;
+    const packet = `REQUEST PREDEP CLEARANCE ${callsign} ${aircraftType} ${dep} TO ${arr} AT ${dep} STAND ${stand} ATIS ${atis}${remarks ? ` ${remarks}` : ""}`;
     await hoppieRequest("send", {
         to: document.getElementById("dclTo").value.trim().toUpperCase() || context.dep || "SERVER",
         type: "TELEX",
@@ -284,6 +291,17 @@ async function sendCpdlcReply(messageId, recipient, reply) {
         packet,
         display: reply,
         skipCounter: true
+    });
+}
+
+async function sendFreeTextReply(recipient, text) {
+    const clean = String(text || "").trim().toUpperCase();
+    if (!recipient || !clean) return;
+    await hoppieRequest("send", {
+        to: recipient,
+        type: "TELEX",
+        packet: clean,
+        display: clean
     });
 }
 
@@ -405,7 +423,7 @@ function renderTelexMessages() {
 
     return telexState.messages.map((message, index) => {
         const cpdlc = message.cpdlc || parseCpdlcPacket(message.packet || "");
-        const displayText = cpdlc?.text || message.packet || "N/A";
+        const displayText = formatAcarsMessage(message, cpdlc);
         const peer = message.direction === "OUT" ? message.to : message.from;
         return `
             <article class="item telex-message">
@@ -414,16 +432,32 @@ function renderTelexMessages() {
                     <span class="pill">${escapeHtml(formatTelexTime(message.timestamp))}</span>
                 </div>
                 <p>${escapeHtml(displayText)}</p>
-                ${message.direction === "IN" && cpdlc?.messageId ? renderReplyButtons(index, message, cpdlc) : ""}
+                ${renderMessageManagement(index, message, cpdlc)}
             </article>
         `;
     }).join("");
 }
 
+function renderMessageManagement(index, message, cpdlc) {
+    if (message.direction !== "IN") return "";
+    const requiresCpdlcResponse = !!(cpdlc?.messageId && getAllowedReplies(cpdlc, message).length && !message.acknowledged);
+    return `
+        <div class="telex-management">
+            <div class="telex-management-title">Message Management</div>
+            <div class="telex-replies">
+                <button class="template-btn" data-message-delete="${index}" ${requiresCpdlcResponse ? "disabled" : ""}>DELETE</button>
+                <button class="template-btn" data-free-text-index="${index}">FREE TEXT</button>
+            </div>
+            ${cpdlc?.messageId ? renderReplyButtons(index, message, cpdlc) : ""}
+        </div>
+    `;
+}
+
 function renderReplyButtons(index, message, cpdlc) {
-    const replies = getAllowedReplies(cpdlc.responses);
+    const replies = getAllowedReplies(cpdlc, message);
     if (!replies.length) return "";
     return `
+        <div class="telex-management-title">Reply Options</div>
         <div class="telex-replies">
             ${replies.map((reply) => `
                 <button class="template-btn" data-reply-index="${index}" data-reply="${escapeHtml(reply)}">${escapeHtml(reply)}</button>
@@ -438,7 +472,25 @@ function bindReplyButtons() {
             const message = telexState.messages[Number(button.dataset.replyIndex)];
             const cpdlc = message?.cpdlc || parseCpdlcPacket(message?.packet || "");
             if (!message || !cpdlc?.messageId) return;
-            sendCpdlcReply(cpdlc.messageId, message.from, button.dataset.reply);
+            const reply = normalizeReplyCommand(button.dataset.reply);
+            message.acknowledged = true;
+            sendCpdlcReply(cpdlc.messageId, message.from, reply).then(refreshTelexWorkbench);
+        });
+    });
+    document.querySelectorAll("[data-free-text-index]").forEach((button) => {
+        button.addEventListener("click", () => {
+            const message = telexState.messages[Number(button.dataset.freeTextIndex)];
+            if (!message?.from) return;
+            const text = window.prompt("Free text reply", "");
+            if (!text) return;
+            sendFreeTextReply(message.from, text).then(refreshTelexWorkbench);
+        });
+    });
+    document.querySelectorAll("[data-message-delete]").forEach((button) => {
+        button.addEventListener("click", () => {
+            const index = Number(button.dataset.messageDelete);
+            telexState.messages.splice(index, 1);
+            refreshTelexWorkbench();
         });
     });
 }
@@ -450,7 +502,6 @@ function refreshTelexWorkbench() {
     if (target && telexState.connected) {
         target.innerHTML = renderTelexWorkbenchMarkup(buildTelexContext());
         bindTelexWorkbench();
-        bindReplyButtons();
     }
 }
 
@@ -461,16 +512,71 @@ function parseCpdlcPacket(packet) {
         messageId: match[1],
         responseId: match[2] || "",
         responses: (match[3] || "").toUpperCase(),
-        text: match[4].replace(/@@/g, "N/A").replace(/@/g, " ").replace(/_/g, "").replace(/\s+/g, " ").trim()
+        text: decodeHoppieText(match[4])
     };
 }
 
-function getAllowedReplies(code) {
-    if (code === "WU") return ["WILCO", "UNABLE", "STANDBY"];
-    if (code === "AN") return ["AFFIRMATIVE", "NEGATIVE", "STANDBY"];
-    if (code === "R") return ["ROGER", "UNABLE", "STANDBY"];
-    if (code === "Y") return ["ROGER", "STANDBY"];
-    return [];
+function formatAcarsMessage(message, cpdlc) {
+    const peer = message.direction === "OUT" ? message.to : message.from;
+    const lines = [
+        `${(message.type || "TELEX").toUpperCase()} ${message.direction === "OUT" ? "TO" : "FROM"} ${peer || "UNKNOWN"}`,
+        `TIME ${formatTelexTime(message.timestamp)}`
+    ];
+
+    if (cpdlc?.messageId) {
+        lines.push(`MSG ID ${cpdlc.messageId}`);
+        if (cpdlc.responseId) lines.push(`RESP TO ${cpdlc.responseId}`);
+        lines.push(`RESPONSE ${formatResponseCode(cpdlc.responses)}`);
+        lines.push("");
+        lines.push(cpdlc.text || "N/A");
+        return lines.join("\n");
+    }
+
+    lines.push("");
+    lines.push(decodeHoppieText(message.packet || message.raw || "N/A"));
+    return lines.join("\n");
+}
+
+function decodeHoppieText(value) {
+    return String(value || "")
+        .replace(/\{[^}]*\}/g, "")
+        .replace(/@@/g, " N/A ")
+        .replace(/@/g, "\n")
+        .replace(/_/g, " ")
+        .replace(/[ \t]+/g, " ")
+        .replace(/\n\s+/g, "\n")
+        .replace(/\s+\n/g, "\n")
+        .trim();
+}
+
+function formatResponseCode(code) {
+    const map = {
+        WU: "WILCO / UNABLE",
+        AN: "AFFIRM / NEGATIVE",
+        R: "ROGER",
+        Y: "RESPONSE REQUIRED",
+        N: "NO RESPONSE REQUIRED"
+    };
+    return map[code] || code || "N/A";
+}
+
+function getAllowedReplies(cpdlc, message = {}) {
+    const code = typeof cpdlc === "string" ? cpdlc : cpdlc?.responses;
+    const text = `${cpdlc?.text || ""} ${message.packet || ""}`.toUpperCase();
+    const replies = [];
+    if (code === "WU") replies.push("WILCO", "UNABLE", "STANDBY");
+    if (code === "AN") replies.push("AFFIRMATIVE", "NEGATIVE", "STANDBY");
+    if (code === "R") replies.push("ROGER", "UNABLE", "STANDBY");
+    if (code === "Y") replies.push("ROGER", "STANDBY");
+    if (/PREDEP|PDC|CLEARANCE|CLRD|CLEARED|RCD/.test(text)) replies.push("ACCEPT", "REJECT");
+    if (!replies.length && cpdlc?.messageId) replies.push("ROGER", "STANDBY");
+    return [...new Set(replies)];
+}
+
+function normalizeReplyCommand(reply) {
+    if (reply === "ACCEPT") return "WILCO";
+    if (reply === "REJECT") return "UNABLE";
+    return reply;
 }
 
 function appendTelexLog(line) {
@@ -491,8 +597,23 @@ function buildTelexContext() {
         dep: booking ? shortAirport(booking, "departure") : "N/A",
         arr: booking ? shortAirport(booking, "arrival") : "N/A",
         level: booking?.altitude ? `FL${Math.round(Number(booking.altitude) / 100)}` : "N/A",
-        route: booking?.user_route || ""
+        route: booking?.user_route || "",
+        aircraftType: getBookingAircraftType(booking)
     };
+}
+
+function getBookingAircraftType(booking) {
+    if (!booking) return "";
+    const direct = booking.aircraft_type
+        || booking.aircraft_icao
+        || booking.fleet?.icao
+        || booking.fleet?.type
+        || booking.aircraft?.icao
+        || booking.aircraft?.type;
+    if (direct) return normalizeAircraftType(direct);
+    const ref = typeof lookupAircraft === "function" ? lookupAircraft(booking.aircraft_id) : null;
+    const refType = ref?.icao || ref?.type || ref?.name || ref?.registration || "";
+    return normalizeAircraftType(refType);
 }
 
 async function loadVatsimFlightPlan() {
@@ -521,11 +642,22 @@ function applyVatsimFlightPlan(plan) {
     const arr = plan.arrival || plan.arrival_airport || plan.arr || plan.arrival_icao || "N/A";
     const route = plan.route || plan.flight_route || plan.filed_route || "";
     const altitude = plan.altitude || plan.cruise_tas || plan.flight_level || "N/A";
+    const aircraftType = normalizeAircraftType(plan.aircraft_short || plan.aircraft_icao || plan.aircraft_type || plan.aircraft || plan.ac_type || "");
     document.getElementById("fpDep").textContent = dep;
     document.getElementById("fpArr").textContent = arr;
     document.getElementById("fpLevel").textContent = formatFlightLevel(altitude);
+    const dclAircraft = document.getElementById("dclAircraftType");
+    if (dclAircraft && aircraftType) dclAircraft.value = aircraftType;
     const routeBox = document.getElementById("telexRoute");
     if (routeBox) routeBox.value = route;
+}
+
+function normalizeAircraftType(value) {
+    const text = String(value || "").toUpperCase().trim();
+    const slashMatch = text.match(/([A-Z0-9]{3,4})\//);
+    if (slashMatch) return slashMatch[1];
+    const codeMatch = text.match(/\b([A-Z][A-Z0-9]{2,3})\b/);
+    return codeMatch ? codeMatch[1] : text.slice(0, 8);
 }
 
 function formatFlightLevel(value) {

@@ -2,6 +2,9 @@ let cdmAirportLastSearch = "";
 let cdmCallsignLastSearch = "";
 let cdmAirportFlights = [];
 let cdmAirportCode = "";
+let cdmRefreshTimer = null;
+let cdmLastUpdated = "";
+const CDM_REFRESH_MS = 30000;
 
 function renderCdmAirport() {
     document.getElementById("mainPanel").innerHTML = `
@@ -43,18 +46,24 @@ function renderCdmAirport() {
 }
 
 async function requestCdmAirportStatus() {
+    return loadCdmAirportStatus(false);
+}
+
+async function loadCdmAirportStatus(silent = false) {
     const input = document.getElementById("cdmAirportInput");
     const result = document.getElementById("cdmAirportResult");
+    if (!input || !result) return;
     const airport = input.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
     input.value = airport;
     cdmAirportLastSearch = airport;
 
     if (airport.length !== 4) {
+        stopCdmAutoRefresh();
         result.innerHTML = `<p class="error">Enter a valid 4-letter airport ICAO.</p>`;
         return;
     }
 
-    result.innerHTML = `<p class="empty">Loading CDM status for ${escapeHtml(airport)}...</p>`;
+    if (!silent) result.innerHTML = `<p class="empty">Loading CDM status for ${escapeHtml(airport)}...</p>`;
     try {
         const res = await fetch(`/api/cdm-airport?airport=${encodeURIComponent(airport)}`);
         const json = await res.json();
@@ -62,9 +71,15 @@ async function requestCdmAirportStatus() {
         const flights = Array.isArray(json) ? json : (Array.isArray(json.data) ? json.data : []);
         cdmAirportFlights = flights;
         cdmAirportCode = airport;
-        result.innerHTML = renderCdmAirportData(airport, flights);
+        cdmLastUpdated = new Date().toISOString();
+        result.innerHTML = renderCdmAirportData(airport, flights, cdmCallsignLastSearch);
+        startCdmAutoRefresh();
     } catch (err) {
-        result.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+        if (!silent) {
+            result.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+        } else {
+            appendCdmRefreshNote(err.message);
+        }
     }
 }
 
@@ -106,6 +121,10 @@ function renderCdmAirportData(airport, flights, callsignFilter = "") {
             ${cdmStat("Aircraft", sorted.length)}
             ${cdmStat("Active", activeCount)}
             ${cdmStat(callsignFilter ? "Matches" : "Confirmed", callsignFilter ? filtered.length : confirmedCount)}
+        </div>
+        <div class="cdm-refresh-row">
+            <span>Auto refresh every ${Math.round(CDM_REFRESH_MS / 1000)}s</span>
+            <strong id="cdmRefreshStamp">Updated ${escapeHtml(formatCdmRefreshTime(cdmLastUpdated))}</strong>
         </div>
         ${callsignFilter ? `<p class="empty" style="margin-bottom:12px;">Showing callsigns matching ${escapeHtml(callsignFilter)} inside ${escapeHtml(airport)} queue.</p>` : ""}
         <div class="cdm-list">
@@ -149,7 +168,7 @@ function renderCdmFlight(flight, sequence, callsignFilter = "") {
                 ${cdmRows.map(([label, value]) => `
                     <div class="cdm-data-cell">
                         <span>${escapeHtml(label)}</span>
-                        <strong>${escapeHtml(formatValue(value))}</strong>
+                        <strong>${escapeHtml(formatCdmCellValue(label, value))}</strong>
                     </div>
                 `).join("")}
             </div>
@@ -169,9 +188,60 @@ function getCdmSortTime(flight) {
     const value = cdm.ttot || cdm.ctot || cdm.tsat || cdm.tobt || "";
     const parsed = Date.parse(value);
     if (Number.isFinite(parsed)) return parsed;
-    const hhmm = String(value).match(/(\d{2}):?(\d{2})/);
+    const hhmm = formatCdmTime(value).match(/^(\d{2})(\d{2})$/);
     if (hhmm) return Number(hhmm[1]) * 60 + Number(hhmm[2]);
     return Number.MAX_SAFE_INTEGER;
+}
+
+function startCdmAutoRefresh() {
+    stopCdmAutoRefresh();
+    if (!cdmAirportLastSearch) return;
+    cdmRefreshTimer = window.setInterval(() => {
+        const input = document.getElementById("cdmAirportInput");
+        if (!input) {
+            stopCdmAutoRefresh();
+            return;
+        }
+        loadCdmAirportStatus(true);
+    }, CDM_REFRESH_MS);
+}
+
+function stopCdmAutoRefresh() {
+    if (!cdmRefreshTimer) return;
+    window.clearInterval(cdmRefreshTimer);
+    cdmRefreshTimer = null;
+}
+
+function appendCdmRefreshNote(message) {
+    const stamp = document.getElementById("cdmRefreshStamp");
+    if (stamp) stamp.textContent = `Refresh failed: ${message}`;
+}
+
+function formatCdmRefreshTime(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "never";
+    const hh = String(date.getUTCHours()).padStart(2, "0");
+    const mm = String(date.getUTCMinutes()).padStart(2, "0");
+    const ss = String(date.getUTCSeconds()).padStart(2, "0");
+    return `${hh}:${mm}:${ss} UTC`;
+}
+
+function formatCdmCellValue(label, value) {
+    if (/TOBT|TSAT|TTOT|CTOT|ASRT/i.test(label)) {
+        return formatCdmTime(value);
+    }
+    return formatValue(value);
+}
+
+function formatCdmTime(value) {
+    const text = String(formatValue(value, "")).trim();
+    if (!text) return "N/A";
+    const compact = text.replace(/[^0-9]/g, "");
+    if (/^\d{6}$/.test(compact)) return compact.slice(-4);
+    if (/^\d{4}$/.test(compact)) return compact;
+    const hhmm = text.match(/(\d{2}):?(\d{2})/);
+    if (hhmm) return `${hhmm[1]}${hhmm[2]}`;
+    return text;
 }
 
 function cdmStat(label, value) {
