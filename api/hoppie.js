@@ -1,5 +1,16 @@
 const HOPPIE_ENDPOINT = "https://www.hoppie.nl/acars/system/connect.html";
-const VALID_TYPES = new Set(["telex", "poll", "peek", "ping", "cpdlc", "acars", "progress"]);
+const VALID_TYPES = new Set(["telex", "poll", "peek", "ping", "cpdlc", "acars", "progress", "ads-c", "inforeq"]);
+const TYPE_CANONICAL = {
+  telex: "TELEX",
+  cpdlc: "CPDLC",
+  acars: "ACARS",
+  progress: "PROGRESS",
+  "ads-c": "ADS-C",
+  inforeq: "INFOREQ",
+  poll: "poll",
+  peek: "peek",
+  ping: "ping"
+};
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -63,7 +74,7 @@ function buildHoppiePayload(body) {
     logon,
     from,
     to,
-    type,
+    type: TYPE_CANONICAL[type] || type,
     packet
   };
 }
@@ -72,21 +83,42 @@ function parseHoppieResponse(text) {
   const cleanText = clean(text);
   if (!cleanText || cleanText.toUpperCase() === "OK") return [];
 
+  const braceMatches = [...cleanText.matchAll(/\{([^{}]+)\}/g)];
+  if (braceMatches.length) {
+    return braceMatches.map((match, index) => parseHoppieLine(match[1], String(index + 1)));
+  }
+
   return cleanText
     .split(/\n+/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const match = line.match(/^(\S+)\s+(\S+)\s+(\S+)\s+(.+)$/);
-      if (!match) return { raw: line };
-      return {
-        id: match[1],
-        from: match[2],
-        type: match[3],
-        packet: match[4],
-        raw: line
-      };
-    });
+    .map((line, index) => parseHoppieLine(line.trim(), String(index + 1)))
+    .filter((message) => message.raw);
+}
+
+function parseHoppieLine(line, fallbackId) {
+  if (!line) return { raw: "" };
+  const withId = line.match(/^(\d+)\s+(\S+)\s+(\S+)\s+(.+)$/);
+  if (withId) {
+    return {
+      id: withId[1],
+      from: withId[2],
+      type: withId[3],
+      packet: withId[4],
+      raw: line
+    };
+  }
+
+  const withoutId = line.match(/^(\S+)\s+(\S+)\s+(.+)$/);
+  if (withoutId) {
+    return {
+      id: fallbackId,
+      from: withoutId[1],
+      type: withoutId[2],
+      packet: withoutId[3],
+      raw: line
+    };
+  }
+
+  return { id: fallbackId, raw: line };
 }
 
 function clean(value) {

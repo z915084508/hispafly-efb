@@ -479,6 +479,29 @@
             background: rgba(255,196,0,0.08);
         }
 
+        .telex-message-list {
+            display: grid;
+            gap: 10px;
+            max-height: 360px;
+            overflow: auto;
+            padding-right: 4px;
+        }
+
+        .telex-message p {
+            color: rgba(255,255,255,0.78);
+            font-family: "Courier New", monospace;
+            font-size: 13px;
+            line-height: 1.45;
+            white-space: pre-wrap;
+        }
+
+        .telex-replies {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 12px;
+        }
+
         .field {
             display: grid;
             gap: 6px;
