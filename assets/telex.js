@@ -24,7 +24,7 @@ function renderTelex() {
                     <label for="telexCode">Hoppie LOGON Code</label>
                     <input id="telexCode" type="password" autocomplete="off" placeholder="Saved in Pilot Profile" value="${escapeHtml(context.logonCode)}">
                 </div>
-                <button class="primary-btn" id="telexConnectBtn">${telexState.connected ? "REFRESH CONNECTION" : "CONNECT"}</button>
+                <button class="primary-btn" id="telexConnectBtn">${telexState.connected ? "DISCONNECT" : "CONNECT"}</button>
                 <div class="data-list" style="margin-top:14px;">
                     <div class="data-row"><span>DEP</span><strong id="fpDep">${escapeHtml(context.dep)}</strong></div>
                     <div class="data-row"><span>ARR</span><strong id="fpArr">${escapeHtml(context.arr)}</strong></div>
@@ -200,7 +200,19 @@ function bindTelexWorkbench() {
 }
 
 async function connectTelex() {
+    if (telexState.connected) {
+        disconnectTelex();
+        return;
+    }
     await hoppieRequest("logon");
+}
+
+function disconnectTelex() {
+    telexState.connected = false;
+    telexState.currentAtcUnit = "";
+    telexState.pendingLogon = "";
+    telexState.page = "menu";
+    renderTelex();
 }
 
 async function sendAtcLogonToggle() {
