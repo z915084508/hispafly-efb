@@ -80,7 +80,7 @@
         .map-panel {
             min-height: 0;
             display: grid;
-            grid-template-rows: 1fr auto;
+            grid-template-rows: 1fr auto auto;
             background: rgba(4,7,12,0.62);
         }
 
@@ -154,6 +154,79 @@
             font-size: 14px;
         }
 
+        .flight-list-panel {
+            border-top: 1px solid rgba(255,255,255,0.10);
+            background: rgba(0,0,0,0.24);
+            padding: 14px;
+        }
+
+        .flight-list-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .flight-list-title h2 {
+            border-left: 4px solid var(--red);
+            padding-left: 10px;
+            font-size: 16px;
+        }
+
+        .flight-list {
+            display: grid;
+            gap: 10px;
+            max-height: 190px;
+            overflow: auto;
+            padding-right: 4px;
+        }
+
+        .flight-item {
+            display: grid;
+            grid-template-columns: minmax(130px, 1.2fr) repeat(6, minmax(90px, 1fr));
+            gap: 10px;
+            align-items: center;
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.05);
+            padding: 11px;
+        }
+
+        .flight-item strong {
+            display: block;
+            font-size: 14px;
+        }
+
+        .flight-cell span {
+            display: block;
+            color: var(--muted);
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            margin-bottom: 3px;
+        }
+
+        .flight-cell b {
+            display: block;
+            color: #fff;
+            font-size: 12px;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            min-height: 24px;
+            width: fit-content;
+            padding: 0 9px;
+            border-radius: 999px;
+            background: rgba(255,196,0,0.14);
+            color: var(--yellow);
+            font-size: 11px;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
         .error {
             color: var(--danger);
         }
@@ -193,6 +266,15 @@
                 <div class="stat"><span>Refresh</span><strong>30s</strong></div>
                 <div class="stat"><span>Updated</span><strong id="statUpdated">N/A</strong></div>
             </div>
+            <section class="flight-list-panel">
+                <div class="flight-list-title">
+                    <h2>Active Flight List</h2>
+                    <span class="muted" id="flightListCount">0 flights</span>
+                </div>
+                <div class="flight-list" id="activeFlightList">
+                    <p class="muted">Loading active flights...</p>
+                </div>
+            </section>
         </div>
     </main>
 
@@ -261,6 +343,7 @@
                     phase: flight.progress?.currentPhase || flight.phase?.name || flight.phase || "ACTIVE",
                     altitude: firstDefined(flight.progress?.altitude, flight.booking?.altitude, ""),
                     speed: firstDefined(flight.progress?.groundSpeed, flight.progress?.groundspeed, ""),
+                    eta: firstDefined(flight.progress?.eta, flight.progress?.estimatedArrivalTime, flight.progress?.estimated_arrival_time, ""),
                     heading: firstDefined(flight.progress?.magneticHeading, flight.progress?.magnetic_heading, 0),
                     position,
                     route
@@ -307,7 +390,50 @@
             document.getElementById("statActive").textContent = String(flights.length);
             document.getElementById("statMapped").textContent = String(mapped.length);
             document.getElementById("statUpdated").textContent = `${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")} UTC`;
+            renderFlightList(flights);
             window.setTimeout(() => map.invalidateSize(), 80);
+        }
+
+        function renderFlightList(flights) {
+            const list = document.getElementById("activeFlightList");
+            document.getElementById("flightListCount").textContent = `${flights.length} flight${flights.length === 1 ? "" : "s"}`;
+            if (!flights.length) {
+                list.innerHTML = `<p class="muted">No active VAMSYS flights were returned.</p>`;
+                return;
+            }
+
+            list.innerHTML = flights.map((flight) => `
+                <article class="flight-item">
+                    <div class="flight-cell">
+                        <span>Flight</span>
+                        <strong>${escapeHtml(formatValue(flight.flightNumber || flight.callsign))}</strong>
+                    </div>
+                    <div class="flight-cell">
+                        <span>DEP</span>
+                        <b>${escapeHtml(formatValue(flight.departure))}</b>
+                    </div>
+                    <div class="flight-cell">
+                        <span>ARR</span>
+                        <b>${escapeHtml(formatValue(flight.arrival))}</b>
+                    </div>
+                    <div class="flight-cell">
+                        <span>Altitude</span>
+                        <b>${escapeHtml(formatAltitude(flight.altitude))}</b>
+                    </div>
+                    <div class="flight-cell">
+                        <span>Groundspeed</span>
+                        <b>${escapeHtml(formatSpeed(flight.speed))}</b>
+                    </div>
+                    <div class="flight-cell">
+                        <span>ETA</span>
+                        <b>${escapeHtml(formatEta(flight.eta))}</b>
+                    </div>
+                    <div class="flight-cell">
+                        <span>Phase</span>
+                        <b class="pill">${escapeHtml(formatValue(flight.phase, "ACTIVE"))}</b>
+                    </div>
+                </article>
+            `).join("");
         }
 
         function renderPopup(flight) {
@@ -361,6 +487,25 @@
 
         function formatValue(value, fallback = "N/A") {
             return value === undefined || value === null || value === "" ? fallback : value;
+        }
+
+        function formatAltitude(value) {
+            const number = Number(value);
+            if (!Number.isFinite(number)) return formatValue(value);
+            return `${Math.round(number)} ft`;
+        }
+
+        function formatSpeed(value) {
+            const number = Number(value);
+            if (!Number.isFinite(number)) return formatValue(value);
+            return `${Math.round(number)} kt`;
+        }
+
+        function formatEta(value) {
+            if (!value) return "N/A";
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return value;
+            return `${String(date.getUTCHours()).padStart(2, "0")}:${String(date.getUTCMinutes()).padStart(2, "0")} UTC`;
         }
 
         function escapeHtml(value) {
