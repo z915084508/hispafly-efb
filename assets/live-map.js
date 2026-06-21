@@ -7,35 +7,10 @@ const LIVE_MAP_REFRESH_MS = 30000;
 
 function renderLiveFlightMap() {
     document.getElementById("mainPanel").innerHTML = `
-        <div class="live-map-layout">
-            <section class="card wide live-map-card">
-                <div class="item-title">
-                    <h2 style="margin:0;">Live Flight Map</h2>
-                    <span class="pill" id="liveMapRefreshStamp">Loading</span>
-                </div>
-                <div class="live-map-toolbar">
-                    <div class="live-map-stats" id="liveMapStats">
-                        ${liveMapStat("Active Flights", "--")}
-                        ${liveMapStat("Mapped", "--")}
-                        ${liveMapStat("Network", "VAMSYS")}
-                    </div>
-                    <button class="inline-btn" id="liveMapReloadBtn">RELOAD MAP</button>
-                </div>
-                <div id="liveMapCanvas" class="live-map-canvas"></div>
-            </section>
-            <section class="card wide">
-                <h2>Active Flight List</h2>
-                <div id="liveMapList" class="live-map-list">
-                    <p class="empty">Loading active flights...</p>
-                </div>
-            </section>
-        </div>
+        <section class="card wide" style="height:100%;min-height:640px;padding:0;overflow:hidden;">
+            <iframe class="pdf-frame live-map-frame" src="live-flight-map.html?embedded=1" title="Live Flight Map"></iframe>
+        </section>
     `;
-
-    document.getElementById("liveMapReloadBtn").addEventListener("click", () => loadLiveFlightMap(false));
-    initLiveMap();
-    loadLiveFlightMap(false);
-    startLiveMapAutoRefresh();
 }
 
 function initLiveMap() {
