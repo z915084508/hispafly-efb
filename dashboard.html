@@ -698,18 +698,24 @@
                 </div>
 
                 <nav class="menu" aria-label="Dashboard sections">
+                    <div class="menu-group" data-group="activities">
+                        <button class="menu-btn" data-view="activities">
+                            <span>Activities</span>
+                            <small>Events and tours</small>
+                        </button>
+                    </div>
                     <div class="menu-group" data-group="profile">
                         <button class="menu-btn" data-view="profile">
                             <span>Pilot Profile</span>
                             <small>Identity and rank</small>
                         </button>
                         <div class="submenu">
-                            <button class="submenu-btn" data-view="pirepLogbook">PIREP LOGBOOK</button>
+                            <button class="submenu-btn" data-view="pirepLogbook">PIREP Logbook</button>
                         </div>
                     </div>
                     <div class="menu-group" data-group="flightCenter">
                         <button class="menu-btn" data-view="flightCenter">
-                            <span>FLIGHT CENTER</span>
+                            <span>Flight Center</span>
                             <small>Bookings and OFP</small>
                         </button>
                         <div class="submenu">
@@ -719,7 +725,7 @@
                     </div>
                     <div class="menu-group" data-group="flightStatus">
                         <button class="menu-btn" data-link="flight-status.html">
-                            <span>FLIGHT STATUS</span>
+                            <span>Flight Status</span>
                             <small>Track map</small>
                         </button>
                     </div>
@@ -743,9 +749,9 @@
             <section class="content">
                 <div class="content-header">
                     <div>
-                        <div class="eyebrow" id="viewEyebrow">Pilot</div>
-                        <h1 id="viewTitle">Pilot Profile</h1>
-                        <p class="subhead" id="viewSubhead">Crew identity, network IDs, rank, and flight time.</p>
+                        <div class="eyebrow" id="viewEyebrow">Operations</div>
+                        <h1 id="viewTitle">Activities</h1>
+                        <p class="subhead" id="viewSubhead">Latest events, tours, and community activity registrations.</p>
                     </div>
                     <button class="refresh-btn" id="refreshBtn">REFRESH</button>
                 </div>
@@ -760,7 +766,7 @@
     <script>
         const API_ROOT = "https://vamsys.io/api/v3/pilot";
         let accessToken = localStorage.getItem("vamsys_token");
-        let currentView = "profile";
+        let currentView = "activities";
         let pilotData = null;
         let profileData = null;
         let rankData = null;
@@ -808,7 +814,7 @@
 
         async function loadInitialDashboard() {
             await loadPilotProfile();
-            await setView("profile");
+            await setView("activities");
         }
 
         async function setView(view) {
@@ -828,8 +834,8 @@
             const copy = {
                 activities: ["Operations", "Activities", "Latest events, tours, and community activity registrations."],
                 profile: ["Pilot", "Pilot Profile", "Crew identity, network IDs, rank, and flight time."],
-                pirepLogbook: ["Logbook", "PIREP LOGBOOK", "Select a PIREP to open the full pilot report."],
-                flightCenter: ["Flights", "FLIGHT CENTER", "Current bookings and dispatch documents."],
+                pirepLogbook: ["Logbook", "PIREP Logbook", "Select a PIREP to open the full pilot report."],
+                flightCenter: ["Flights", "Flight Center", "Current bookings and dispatch documents."],
                 showBooking: ["Bookings", "Show Pilot Booking", "Select a booking to open full booking details."],
                 simbriefOfp: ["OFP", "SimBrief OFP", "Load the SimBrief OFP for a booking."],
                 telex: ["ACARS", "TELEX", "Hoppie ACARS style logon, inbox, and telex compose station."]
@@ -976,21 +982,24 @@
         }
 
         function renderActivities() {
-            const list = Array.isArray(activitiesData?.data) ? activitiesData.data : [];
+            const list = Array.isArray(activitiesData?.data)
+                ? activitiesData.data
+                : (Array.isArray(activitiesData) ? activitiesData : []);
             if (list.length === 0) {
                 document.getElementById("mainPanel").innerHTML = `
                     <div class="card">
                         <h2>Activities</h2>
                         <p class="empty">No activity registrations were returned for this pilot.</p>
+                        <p style="margin-top:12px;">If activities exist in vAMSYS, use LOG OUT and sign in again to refresh the OAuth token.</p>
                     </div>
                 `;
                 return;
             }
 
             const html = list.map((activity) => {
-                const a = activity.activity || activity;
-                const title = a.name || a.title || activity.name || activity.title || `Activity #${formatValue(a.id || activity.id)}`;
-                const status = activity.status || a.status || "Registered";
+                const a = activity.activity || activity.event || activity.tour || activity;
+                const title = a.name || a.title || activity.name || activity.title || activity.activity_name || `Activity #${formatValue(a.id || activity.id)}`;
+                const status = activity.status || a.status || activity.registration_status || "Registered";
                 const starts = a.start_at || a.starts_at || a.start_date || activity.created_at;
                 const ends = a.end_at || a.ends_at || a.end_date || activity.updated_at;
                 return `
@@ -1004,6 +1013,7 @@
                             <span>Start: ${escapeHtml(formatDate(starts))}</span>
                             <span>End: ${escapeHtml(formatDate(ends))}</span>
                             <span>ID: ${escapeHtml(formatValue(a.id || activity.activity_id || activity.id))}</span>
+                            <span>Progress: ${escapeHtml(formatValue(activity.progress || a.progress))}</span>
                         </div>
                     </article>
                 `;
