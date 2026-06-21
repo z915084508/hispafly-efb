@@ -492,6 +492,88 @@
             white-space: pre-wrap;
         }
 
+        .ofp-viewer {
+            display: grid;
+            gap: 14px;
+        }
+
+        .ofp-sheet {
+            min-height: 540px;
+            border-radius: 12px;
+            padding: 22px;
+            background: #f4f1e8;
+            color: #111;
+            font-family: "Courier New", monospace;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12);
+        }
+
+        .ofp-title {
+            display: flex;
+            align-items: start;
+            justify-content: space-between;
+            gap: 14px;
+            padding-bottom: 12px;
+            border-bottom: 3px solid #111;
+            margin-bottom: 16px;
+        }
+
+        .ofp-title h2 {
+            border: 0;
+            padding: 0;
+            margin: 0;
+            color: #111;
+            font-size: 28px;
+        }
+
+        .ofp-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .ofp-box {
+            border: 1px solid #222;
+            padding: 8px;
+            min-height: 58px;
+        }
+
+        .ofp-box span {
+            display: block;
+            color: #555;
+            font-size: 10px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .ofp-box strong {
+            display: block;
+            color: #111;
+            font-size: 16px;
+        }
+
+        .ofp-section {
+            border-top: 1px solid #222;
+            padding-top: 12px;
+            margin-top: 12px;
+        }
+
+        .ofp-section h3 {
+            border: 0;
+            padding: 0;
+            margin: 0 0 8px;
+            color: #111;
+            font-size: 14px;
+            letter-spacing: 0;
+        }
+
+        .ofp-pre {
+            white-space: pre-wrap;
+            color: #111;
+            line-height: 1.45;
+            font-size: 13px;
+        }
+
         .error {
             color: var(--danger);
         }
@@ -1026,8 +1108,8 @@
                         <span class="pill">${escapeHtml(formatValue(pirep.status, "PIREP"))}</span>
                     </div>
                     <div class="meta">
-                        <span>From: ${escapeHtml(formatValue(pirep.departure_icao || pirep.departure_id))}</span>
-                        <span>To: ${escapeHtml(formatValue(pirep.arrival_icao || pirep.arrival_id))}</span>
+                        <span>From: ${escapeHtml(formatAirport(pirep, "departure"))}</span>
+                        <span>To: ${escapeHtml(formatAirport(pirep, "arrival"))}</span>
                         <span>ID: ${escapeHtml(formatValue(pirep.id))}</span>
                     </div>
                 </button>
@@ -1046,8 +1128,8 @@
                         <span class="pill">${escapeHtml(formatValue(booking.type, "Booking"))}</span>
                     </div>
                     <div class="meta">
-                        <span>From: ${escapeHtml(formatValue(booking.departure_icao || booking.departure_id))}</span>
-                        <span>To: ${escapeHtml(formatValue(booking.arrival_icao || booking.arrival_id))}</span>
+                        <span>From: ${escapeHtml(formatAirport(booking, "departure"))}</span>
+                        <span>To: ${escapeHtml(formatAirport(booking, "arrival"))}</span>
                         <span>ID: ${escapeHtml(formatValue(booking.id))}</span>
                     </div>
                 </button>
@@ -1095,21 +1177,21 @@
             box.innerHTML = `<p class="empty">Loading SimBrief OFP ${escapeHtml(id)}...</p>`;
             try {
                 const json = await fetchPilotJson(`/bookings/${id}/simbrief`);
-                box.innerHTML = `<div class="message-log">${escapeHtml(JSON.stringify(json.data || json, null, 2))}</div>`;
+                box.innerHTML = renderLidoOfp(json.data || json);
             } catch (err) {
                 box.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
             }
         }
 
         function renderObjectDetails(data) {
-            const rows = Object.entries(data || {}).filter(([, value]) => value !== null && value !== undefined);
+            const rows = buildReadableRows(data || {});
             if (rows.length === 0) return `<p class="empty">No detail returned.</p>`;
 
             return `
                 <div class="data-list">
                     ${rows.map(([key, value]) => `
                         <div class="data-row">
-                            <span>${escapeHtml(formatLabel(key))}</span>
+                            <span>${escapeHtml(key)}</span>
                             <strong>${escapeHtml(formatDetailValue(value))}</strong>
                         </div>
                     `).join("")}
@@ -1117,11 +1199,117 @@
             `;
         }
 
+        function buildReadableRows(data) {
+            const preferred = [
+                ["Flight", `${formatValue(data.flight_number, "Flight")} ${formatValue(data.callsign, "")}`.trim()],
+                ["Departure", formatAirport(data, "departure")],
+                ["Arrival", formatAirport(data, "arrival")],
+                ["Status", data.status || data.type],
+                ["Network", data.network],
+                ["Departure Time", data.departure_time],
+                ["Arrival Time", data.arrival_time],
+                ["Aircraft", formatAircraft(data)],
+                ["Route", data.user_route],
+                ["Altitude", data.altitude],
+                ["Distance", data.distance],
+                ["Flight Time", data.flight_time],
+                ["Landing Rate", data.landing_rate],
+                ["Fuel Used", data.fuel_used],
+                ["PIREP ID", data.pirep_id || data.id],
+                ["Booking ID", data.booking_id]
+            ].filter(([, value]) => value !== undefined && value !== null && value !== "" && value !== "N/A");
+
+            const used = new Set(["flight_number", "callsign", "departure_id", "arrival_id", "departure_time", "arrival_time", "status", "type", "network", "user_route", "altitude", "distance", "flight_time", "landing_rate", "fuel_used", "pirep_id", "booking_id", "id", "aircraft_id"]);
+            const extras = Object.entries(data)
+                .filter(([key, value]) => !used.has(key) && value !== null && value !== undefined && typeof value !== "object")
+                .map(([key, value]) => [formatLabel(key), value]);
+
+            return [...preferred, ...extras];
+        }
+
+        function renderLidoOfp(raw) {
+            const ofp = raw.ofp_data || raw;
+            const atc = ofp.atc || {};
+            const general = ofp.general || {};
+            const fuel = ofp.fuel || {};
+            const times = ofp.times || {};
+            const weights = ofp.weights || {};
+            const navlog = ofp.navlog || {};
+            const route = atc.route || ofp.route || navlog.route || atc.route_ifps || "N/A";
+            const callsign = atc.callsign || general.icao_airline || general.flight_number || "N/A";
+            const origin = atc.fir_orig || atc.orig || general.origin || ofp.origin || "N/A";
+            const dest = atc.fir_dest || atc.dest || general.destination || ofp.destination || "N/A";
+            const altn = atc.altn || general.alternate || ofp.alternate || "N/A";
+
+            return `
+                <div class="ofp-viewer">
+                    <div class="ofp-sheet">
+                        <div class="ofp-title">
+                            <div>
+                                <h2>HISPAFLY OFP</h2>
+                                <p>OPERATIONAL FLIGHT PLAN / LIDO STYLE VIEW</p>
+                            </div>
+                            <strong>${escapeHtml(callsign)}</strong>
+                        </div>
+                        <div class="ofp-grid">
+                            ${ofpBox("ORIGIN", origin)}
+                            ${ofpBox("DEST", dest)}
+                            ${ofpBox("ALTN", altn)}
+                            ${ofpBox("AIRCRAFT", atc.aircraft || general.aircraft || "N/A")}
+                            ${ofpBox("ETOPS", atc.fir_etops?.join(", ") || "N/A")}
+                            ${ofpBox("FUEL", fuel.plan_ramp || fuel.trip || fuel.block || "N/A")}
+                            ${ofpBox("EET", times.est_time_enroute || times.sched_time_enroute || "N/A")}
+                            ${ofpBox("ZFW", weights.est_zfw || weights.max_zfw || "N/A")}
+                        </div>
+                        <div class="ofp-section">
+                            <h3>ATC FLIGHT PLAN</h3>
+                            <div class="ofp-pre">${escapeHtml(atc.section18 || atc.raw || "N/A")}</div>
+                        </div>
+                        <div class="ofp-section">
+                            <h3>ROUTE</h3>
+                            <div class="ofp-pre">${escapeHtml(route)}</div>
+                        </div>
+                        <div class="ofp-section">
+                            <h3>RAW OFP DATA</h3>
+                            <div class="ofp-pre">${escapeHtml(JSON.stringify(ofp, null, 2))}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function ofpBox(label, value) {
+            return `<div class="ofp-box"><span>${escapeHtml(label)}</span><strong>${escapeHtml(formatValue(value))}</strong></div>`;
+        }
+
         function formatDetailValue(value) {
             if (typeof value === "object" && value !== null) {
                 return JSON.stringify(value);
             }
             return formatValue(value);
+        }
+
+        function formatAirport(data, side) {
+            const objectKeys = [
+                side,
+                `${side}_airport`,
+                `${side}Airport`,
+                `${side}_apt`
+            ];
+            for (const key of objectKeys) {
+                const obj = data?.[key];
+                const code = obj?.icao || obj?.icao_code || obj?.iata || obj?.identifier || obj?.code;
+                if (code) return code;
+            }
+            const direct = data?.[`${side}_icao`] || data?.[`${side}_icao_code`] || data?.[`${side}_iata`] || data?.[`${side}_code`];
+            if (direct) return direct;
+            const id = data?.[`${side}_id`];
+            return id ? `Airport #${id}` : "N/A";
+        }
+
+        function formatAircraft(data) {
+            const aircraft = data.aircraft || data.fleet || {};
+            return aircraft.registration || aircraft.reg || aircraft.name || aircraft.icao || aircraft.type || (data.aircraft_id ? `Aircraft #${data.aircraft_id}` : "N/A");
         }
 
         function formatLabel(key) {
