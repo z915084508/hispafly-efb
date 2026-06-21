@@ -60,7 +60,8 @@ async function getOperationsToken(authHeader) {
       body: new URLSearchParams({
         grant_type: "client_credentials",
         client_id: envId,
-        client_secret: envSecret
+        client_secret: envSecret,
+        scope: "ops:read"
       }).toString()
     });
 
