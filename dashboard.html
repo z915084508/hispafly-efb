@@ -698,10 +698,10 @@
                 </div>
 
                 <nav class="menu" aria-label="Dashboard sections">
-                    <div class="menu-group" data-group="activities">
-                        <button class="menu-btn" data-view="activities">
-                            <span>Activities</span>
-                            <small>Events and tours</small>
+                    <div class="menu-group" data-group="notams">
+                        <button class="menu-btn" data-view="notams">
+                            <span>NOTAM</span>
+                            <small>Operational notices</small>
                         </button>
                     </div>
                     <div class="menu-group" data-group="profile">
@@ -750,8 +750,8 @@
                 <div class="content-header">
                     <div>
                         <div class="eyebrow" id="viewEyebrow">Operations</div>
-                        <h1 id="viewTitle">Activities</h1>
-                        <p class="subhead" id="viewSubhead">Latest events, tours, and community activity registrations.</p>
+                        <h1 id="viewTitle">NOTAM</h1>
+                        <p class="subhead" id="viewSubhead">Operational notices and airline advisories.</p>
                     </div>
                     <button class="refresh-btn" id="refreshBtn">REFRESH</button>
                 </div>
@@ -766,7 +766,7 @@
     <script>
         const API_ROOT = "https://vamsys.io/api/v3/pilot";
         let accessToken = localStorage.getItem("vamsys_token");
-        let currentView = "activities";
+        let currentView = "notams";
         let pilotData = null;
         let profileData = null;
         let rankData = null;
@@ -774,7 +774,7 @@
         let bookingsData = null;
         let pirepsData = null;
         let claimsData = null;
-        let activitiesData = null;
+        let notamsData = null;
 
         if (!accessToken) {
             window.location.href = "index.html";
@@ -814,7 +814,7 @@
 
         async function loadInitialDashboard() {
             await loadPilotProfile();
-            await setView("activities");
+            await setView("notams");
         }
 
         async function setView(view) {
@@ -832,7 +832,7 @@
 
         function updateHeader(view) {
             const copy = {
-                activities: ["Operations", "Activities", "Latest events, tours, and community activity registrations."],
+                notams: ["Operations", "NOTAM", "Operational notices and airline advisories."],
                 profile: ["Pilot", "Pilot Profile", "Crew identity, network IDs, rank, and flight time."],
                 pirepLogbook: ["Logbook", "PIREP Logbook", "Select a PIREP to open the full pilot report."],
                 flightCenter: ["Flights", "Flight Center", "Current bookings and dispatch documents."],
@@ -850,9 +850,9 @@
             panel.innerHTML = `<p class="empty">Loading ${escapeHtml(currentView)}...</p>`;
 
             try {
-                if (currentView === "activities") {
-                    if (!activitiesData || force) activitiesData = await fetchPilotJson("/activities/registrations");
-                    renderActivities();
+                if (currentView === "notams") {
+                    if (!notamsData || force) notamsData = await loadNotams();
+                    renderNotams();
                 } else if (currentView === "profile") {
                     if (!pilotData || force) await loadPilotProfile();
                     renderProfile();
@@ -872,17 +872,7 @@
                     renderTelex();
                 }
             } catch (err) {
-                if (currentView === "activities" && /Invalid scope|403/i.test(err.message)) {
-                    panel.innerHTML = `
-                        <div class="card">
-                            <h2>Activities Permission Required</h2>
-                            <p class="error">${escapeHtml(err.message)}</p>
-                            <p style="margin-top:12px;">The vAMSYS client can have Activities enabled, but the current browser token may still be old. Use LOG OUT, then sign in again so vAMSYS issues a fresh token with activities:read.</p>
-                        </div>
-                    `;
-                } else {
-                    panel.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
-                }
+                panel.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
             }
         }
 
@@ -981,45 +971,110 @@
             }
         }
 
-        function renderActivities() {
-            const list = Array.isArray(activitiesData?.data)
-                ? activitiesData.data
-                : (Array.isArray(activitiesData) ? activitiesData : []);
+        async function loadNotams() {
+            const json = await fetchPilotJson("/notams", {
+                sort: "-id",
+                "page[size]": "20"
+            });
+            return json.data || json || [];
+        }
+
+        function renderNotams() {
+            const list = Array.isArray(notamsData?.data)
+                ? notamsData.data
+                : (Array.isArray(notamsData) ? notamsData : []);
             if (list.length === 0) {
                 document.getElementById("mainPanel").innerHTML = `
                     <div class="card">
-                        <h2>Activities</h2>
-                        <p class="empty">No activity registrations were returned for this pilot.</p>
-                        <p style="margin-top:12px;">If activities exist in vAMSYS, use LOG OUT and sign in again to refresh the OAuth token.</p>
+                        <h2>NOTAM</h2>
+                        <p class="empty">No NOTAMs were returned.</p>
                     </div>
                 `;
                 return;
             }
 
-            const html = list.map((activity) => {
-                const a = activity.activity || activity.event || activity.tour || activity;
-                const title = a.name || a.title || activity.name || activity.title || activity.activity_name || `Activity #${formatValue(a.id || activity.id)}`;
-                const status = activity.status || a.status || activity.registration_status || "Registered";
-                const starts = a.start_at || a.starts_at || a.start_date || activity.created_at;
-                const ends = a.end_at || a.ends_at || a.end_date || activity.updated_at;
+            const html = list.map((notam) => {
+                const title = notam.title || notam.subject || notam.name || `NOTAM #${formatValue(notam.id)}`;
+                const status = notam.read || notam.read_at || notam.is_read ? "Read" : "Unread";
+                const body = notam.body || notam.content || notam.message || notam.description || "No content preview";
                 return `
-                    <article class="item">
+                    <button class="item item-button" data-notam-id="${escapeHtml(notam.id)}">
                         <div class="item-title">
                             <span>${escapeHtml(title)}</span>
                             <span class="pill">${escapeHtml(status)}</span>
                         </div>
-                        <p>${escapeHtml(a.description || activity.description || "Community activity registration")}</p>
+                        <p>${escapeHtml(String(body).slice(0, 180))}</p>
                         <div class="meta" style="margin-top:12px;">
-                            <span>Start: ${escapeHtml(formatDate(starts))}</span>
-                            <span>End: ${escapeHtml(formatDate(ends))}</span>
-                            <span>ID: ${escapeHtml(formatValue(a.id || activity.activity_id || activity.id))}</span>
-                            <span>Progress: ${escapeHtml(formatValue(activity.progress || a.progress))}</span>
+                            <span>ID: ${escapeHtml(formatValue(notam.id))}</span>
+                            <span>Issued: ${escapeHtml(formatDate(notam.created_at || notam.published_at || notam.start_at))}</span>
+                            <span>Expires: ${escapeHtml(formatDate(notam.expires_at || notam.end_at))}</span>
                         </div>
-                    </article>
+                    </button>
                 `;
             }).join("");
 
-            document.getElementById("mainPanel").innerHTML = `<div class="list">${html}</div>`;
+            document.getElementById("mainPanel").innerHTML = `
+                <div class="grid">
+                    <section class="card">
+                        <h2>NOTAM List</h2>
+                        <div class="list">${html}</div>
+                    </section>
+                    <section class="card">
+                        <h2>NOTAM Detail</h2>
+                        <div id="notamDetail">
+                            <p class="empty">Select a NOTAM to view details.</p>
+                        </div>
+                    </section>
+                </div>
+            `;
+
+            document.querySelectorAll("[data-notam-id]").forEach((button) => {
+                button.addEventListener("click", () => showNotam(button.dataset.notamId));
+            });
+        }
+
+        function showNotam(id) {
+            const notam = findNotam(id);
+            const box = document.getElementById("notamDetail");
+            if (!notam) {
+                box.innerHTML = `<p class="error">NOTAM not found.</p>`;
+                return;
+            }
+
+            const title = notam.title || notam.subject || notam.name || `NOTAM #${formatValue(notam.id)}`;
+            const body = notam.body || notam.content || notam.message || notam.description || "No content returned.";
+            box.innerHTML = `
+                <div class="data-list">
+                    <div class="data-row"><span>Title</span><strong>${escapeHtml(title)}</strong></div>
+                    <div class="data-row"><span>ID</span><strong>${escapeHtml(formatValue(notam.id))}</strong></div>
+                    <div class="data-row"><span>Status</span><strong>${escapeHtml(notam.read || notam.read_at || notam.is_read ? "Read" : "Unread")}</strong></div>
+                    <div class="data-row"><span>Issued</span><strong>${escapeHtml(formatDate(notam.created_at || notam.published_at || notam.start_at))}</strong></div>
+                    <div class="data-row"><span>Expires</span><strong>${escapeHtml(formatDate(notam.expires_at || notam.end_at))}</strong></div>
+                </div>
+                <div class="message-log" style="margin-top:14px;min-height:220px;">${escapeHtml(body)}</div>
+                <button class="primary-btn" style="margin-top:14px;" id="markNotamReadBtn">MARK NOTAM AS READ</button>
+            `;
+            document.getElementById("markNotamReadBtn").addEventListener("click", () => markNotamRead(id));
+        }
+
+        function findNotam(id) {
+            const list = Array.isArray(notamsData?.data)
+                ? notamsData.data
+                : (Array.isArray(notamsData) ? notamsData : []);
+            return list.find((item) => String(item.id) === String(id));
+        }
+
+        async function markNotamRead(id) {
+            const box = document.getElementById("notamDetail");
+            try {
+                await fetchPilotJson(`/notams/${id}/read`, {}, { method: "POST", body: {} });
+                notamsData = await loadNotams();
+                renderNotams();
+                const detail = document.getElementById("notamDetail");
+                detail.innerHTML = `<p class="ok">NOTAM #${escapeHtml(id)} marked as read.</p>`;
+            } catch (err) {
+                box.innerHTML += `<p class="error" style="margin-top:12px;">${escapeHtml(err.message)}</p>`;
+            }
         }
 
         function renderProfile() {
