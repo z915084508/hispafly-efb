@@ -1,5 +1,7 @@
 let cdmAirportLastSearch = "";
 let cdmCallsignLastSearch = "";
+let cdmAirportFlights = [];
+let cdmAirportCode = "";
 
 function renderCdmAirport() {
     document.getElementById("mainPanel").innerHTML = `
@@ -16,7 +18,7 @@ function renderCdmAirport() {
                         <label for="cdmCallsignInput">Callsign</label>
                         <input id="cdmCallsignInput" autocomplete="off" maxlength="12" placeholder="HPF123" value="${escapeHtml(cdmCallsignLastSearch)}">
                     </div>
-                    <button class="primary-btn" id="cdmCallsignBtn">SEARCH AIRCRAFT</button>
+                    <button class="primary-btn" id="cdmCallsignBtn">FIND CALLSIGN</button>
                 </div>
             </section>
             <section class="card wide">
@@ -58,13 +60,15 @@ async function requestCdmAirportStatus() {
         const json = await res.json();
         if (!res.ok || json.error) throw new Error(json.message || json.error || `CDM HTTP ${res.status}`);
         const flights = Array.isArray(json) ? json : (Array.isArray(json.data) ? json.data : []);
+        cdmAirportFlights = flights;
+        cdmAirportCode = airport;
         result.innerHTML = renderCdmAirportData(airport, flights);
     } catch (err) {
         result.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
     }
 }
 
-async function requestCdmPlaneStatus() {
+function requestCdmPlaneStatus() {
     const input = document.getElementById("cdmCallsignInput");
     const result = document.getElementById("cdmAirportResult");
     const callsign = input.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -76,23 +80,23 @@ async function requestCdmPlaneStatus() {
         return;
     }
 
-    result.innerHTML = `<p class="empty">Loading CDM status for ${escapeHtml(callsign)}...</p>`;
-    try {
-        const res = await fetch(`/api/cdm-plane?callsign=${encodeURIComponent(callsign)}`);
-        const json = await res.json();
-        if (!res.ok || json.error) throw new Error(json.message || json.error || `CDM HTTP ${res.status}`);
-        result.innerHTML = renderCdmPlaneData(callsign, json);
-    } catch (err) {
-        result.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+    if (!cdmAirportFlights.length) {
+        result.innerHTML = `<p class="error">Search an airport ICAO first, then find a callsign inside that airport queue.</p>`;
+        return;
     }
+
+    result.innerHTML = renderCdmAirportData(cdmAirportCode || "AIRPORT", cdmAirportFlights, callsign);
 }
 
-function renderCdmAirportData(airport, flights) {
+function renderCdmAirportData(airport, flights, callsignFilter = "") {
     if (!Array.isArray(flights) || flights.length === 0) {
         return `<p class="empty">No CDM aircraft returned for ${escapeHtml(airport)}.</p>`;
     }
 
     const sorted = [...flights].sort(compareCdmFlights);
+    const filtered = callsignFilter
+        ? sorted.filter((flight) => String(flight.callsign || "").toUpperCase().includes(callsignFilter))
+        : sorted;
     const activeCount = sorted.filter((flight) => String(flight.atfcmStatus || "").toUpperCase().includes("ACT")).length;
     const confirmedCount = sorted.filter((flight) => isCdmConfirmed(flight.cdmData?.confirmed)).length;
 
@@ -101,44 +105,21 @@ function renderCdmAirportData(airport, flights) {
             ${cdmStat("Airport", airport)}
             ${cdmStat("Aircraft", sorted.length)}
             ${cdmStat("Active", activeCount)}
-            ${cdmStat("Confirmed", confirmedCount)}
+            ${cdmStat(callsignFilter ? "Matches" : "Confirmed", callsignFilter ? filtered.length : confirmedCount)}
         </div>
+        ${callsignFilter ? `<p class="empty" style="margin-bottom:12px;">Showing callsigns matching ${escapeHtml(callsignFilter)} inside ${escapeHtml(airport)} queue.</p>` : ""}
         <div class="cdm-list">
-            ${sorted.map((flight, index) => renderCdmFlight(flight, index + 1)).join("")}
+            ${filtered.length
+                ? filtered.map((flight) => renderCdmFlight(flight, sorted.indexOf(flight) + 1, callsignFilter)).join("")
+                : `<p class="empty">No callsign matching ${escapeHtml(callsignFilter)} found in this airport queue.</p>`}
         </div>
     `;
 }
 
-function renderCdmPlaneData(callsign, payload) {
-    const flights = normalizeCdmPlanePayload(payload);
-    if (!flights.length) {
-        return `<p class="empty">No CDM aircraft returned for ${escapeHtml(callsign)}.</p>`;
-    }
-
-    return `
-        <div class="cdm-summary">
-            ${cdmStat("Callsign", callsign)}
-            ${cdmStat("Matches", flights.length)}
-            ${cdmStat("Departure", flights[0]?.departure)}
-            ${cdmStat("Arrival", flights[0]?.arrival)}
-        </div>
-        <div class="cdm-list">
-            ${flights.map((flight, index) => renderCdmFlight(flight, index + 1)).join("")}
-        </div>
-    `;
-}
-
-function normalizeCdmPlanePayload(payload) {
-    if (Array.isArray(payload)) return payload;
-    if (Array.isArray(payload?.data)) return payload.data;
-    if (payload?.callsign || payload?.cdmData || payload?.atfcmStatus) return [payload];
-    if (payload?.data && typeof payload.data === "object") return [payload.data];
-    return [];
-}
-
-function renderCdmFlight(flight, sequence) {
+function renderCdmFlight(flight, sequence, callsignFilter = "") {
     const cdm = flight.cdmData || {};
     const status = flight.atfcmStatus || "N/A";
+    const isMatch = callsignFilter && String(flight.callsign || "").toUpperCase().includes(callsignFilter);
     const cdmRows = [
         ["TOBT", cdm.tobt],
         ["TSAT", cdm.tsat],
@@ -154,7 +135,7 @@ function renderCdmFlight(flight, sequence) {
     ].filter(([, value]) => value !== undefined && value !== null && value !== "");
 
     return `
-        <article class="item cdm-flight">
+        <article class="item cdm-flight ${isMatch ? "cdm-highlight" : ""}">
             <div class="item-title">
                 <span>#${sequence} ${escapeHtml(formatValue(flight.callsign, "UNKNOWN"))}</span>
                 <span class="pill">${escapeHtml(formatValue(status))}</span>
