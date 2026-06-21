@@ -72,7 +72,7 @@ async function loadLiveFlightMap(silent = false) {
     }
 
     try {
-        const res = await fetch("/api/flight-map");
+        const res = await fetch("/api/flight-map?include_posreps=true");
         const json = await res.json();
         if (!res.ok || json.error) throw new Error(json.message || json.error || `Flight map HTTP ${res.status}`);
 
@@ -102,37 +102,131 @@ function normalizeFlightMapData(json) {
         heading: flight.position?.heading || flight.heading || "",
         pilot: flight.pilot?.username || flight.pilot?.name || "",
         aircraft: flight.aircraft?.name || flight.aircraft?.type || flight.aircraft_type || "",
-        position: extractFlightPosition(flight)
+        position: extractFlightPosition(flight),
+        positionDebug: summarizePositionFields(flight)
     }));
 }
 
 function extractFlightPosition(flight) {
+    const historyCandidates = [
+        flight.posreps,
+        flight.positionReports,
+        flight.position_reports,
+        flight.posReports,
+        flight.pos_reports,
+        flight.reports,
+        flight.positionHistory,
+        flight.position_history,
+        flight.track,
+        flight.trackPoints,
+        flight.track_points,
+        flight.route?.points
+    ];
     const candidates = [
         flight.position,
         flight.currentPosition,
+        flight.current_position,
         flight.latestPosition,
+        flight.latest_posrep,
+        flight.latestPosrep,
+        flight.lastPosrep,
+        flight.last_posrep,
         flight.last_position,
+        flight.positionReport,
+        flight.position_report,
+        flight.livePosition,
+        flight.live_position,
+        flight.coordinates,
+        flight.location,
+        flight.geo,
         flight.posrep,
-        Array.isArray(flight.posreps) ? flight.posreps[flight.posreps.length - 1] : null
+        ...historyCandidates.map((items) => Array.isArray(items) ? items[items.length - 1] : null)
     ].filter(Boolean);
 
     for (const item of candidates) {
-        const lat = item.latitude ?? item.lat;
-        const lon = item.longitude ?? item.lng ?? item.lon;
-        const parsedLat = Number(lat);
-        const parsedLon = Number(lon);
-        if (Number.isFinite(parsedLat) && Number.isFinite(parsedLon)) {
-            return { lat: parsedLat, lon: parsedLon };
-        }
+        const parsed = parsePositionValue(item);
+        if (parsed) return parsed;
     }
 
-    const lat = flight.latitude ?? flight.lat;
-    const lon = flight.longitude ?? flight.lng ?? flight.lon;
+    return parsePositionValue(flight);
+}
+
+function parsePositionValue(item) {
+    if (!item) return null;
+
+    if (Array.isArray(item)) {
+        return parseCoordinatePair(item);
+    }
+
+    if (typeof item === "string") {
+        const parts = item.split(/[,\s]+/).map(Number).filter(Number.isFinite);
+        return parts.length >= 2 ? parseCoordinatePair(parts) : null;
+    }
+
+    if (Array.isArray(item.coordinates)) {
+        const parsed = parseCoordinatePair(item.coordinates);
+        if (parsed) return parsed;
+    }
+
+    if (typeof item.position === "string") {
+        const parsed = parsePositionValue(item.position);
+        if (parsed) return parsed;
+    }
+
+    const lat = firstDefined(item.latitude, item.lat, item.Latitude, item.LAT, item.y);
+    const lon = firstDefined(item.longitude, item.lng, item.lon, item.long, item.Longitude, item.LON, item.x);
     const parsedLat = Number(lat);
     const parsedLon = Number(lon);
-    return Number.isFinite(parsedLat) && Number.isFinite(parsedLon)
-        ? { lat: parsedLat, lon: parsedLon }
-        : null;
+    if (Number.isFinite(parsedLat) && Number.isFinite(parsedLon) && isValidLatLon(parsedLat, parsedLon)) {
+        return { lat: parsedLat, lon: parsedLon };
+    }
+
+    return null;
+}
+
+function parseCoordinatePair(values) {
+    if (!Array.isArray(values) || values.length < 2) return null;
+    const first = Number(values[0]);
+    const second = Number(values[1]);
+    if (!Number.isFinite(first) || !Number.isFinite(second)) return null;
+
+    if (isValidLatLon(first, second)) return { lat: first, lon: second };
+    if (isValidLatLon(second, first)) return { lat: second, lon: first };
+    return null;
+}
+
+function isValidLatLon(lat, lon) {
+    return Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+}
+
+function firstDefined(...values) {
+    return values.find((value) => value !== undefined && value !== null && value !== "");
+}
+
+function summarizePositionFields(flight) {
+    const keys = [];
+    const keyGroups = [
+        ["position", flight.position],
+        ["currentPosition", flight.currentPosition],
+        ["current_position", flight.current_position],
+        ["latestPosition", flight.latestPosition],
+        ["latest_posrep", flight.latest_posrep],
+        ["posrep", flight.posrep],
+        ["posreps", flight.posreps],
+        ["positionReports", flight.positionReports],
+        ["position_reports", flight.position_reports],
+        ["track", flight.track],
+        ["coordinates", flight.coordinates],
+        ["lat/lon", firstDefined(flight.latitude, flight.lat)]
+    ];
+
+    keyGroups.forEach(([label, value]) => {
+        if (Array.isArray(value) && value.length) keys.push(`${label}[${value.length}]`);
+        else if (value && typeof value === "object") keys.push(label);
+        else if (value !== undefined && value !== null && value !== "") keys.push(label);
+    });
+
+    return keys.length ? keys.join(", ") : "No position fields returned";
 }
 
 function renderLiveMapData() {
@@ -169,6 +263,28 @@ function renderLiveMapMarkers(flights) {
     if (bounds.length) {
         liveMapInstance.fitBounds(bounds, { padding: [40, 40], maxZoom: 7 });
     }
+
+    renderLiveMapEmptyState(flights.length);
+    window.setTimeout(() => liveMapInstance.invalidateSize(), 80);
+}
+
+function renderLiveMapEmptyState(mappedCount) {
+    const canvas = document.getElementById("liveMapCanvas");
+    if (!canvas) return;
+
+    const existing = document.getElementById("liveMapEmptyState");
+    if (existing) existing.remove();
+
+    if (mappedCount > 0) return;
+
+    const empty = document.createElement("div");
+    empty.id = "liveMapEmptyState";
+    empty.className = "live-map-empty";
+    empty.innerHTML = `
+        <strong>No live coordinates yet</strong>
+        <span>${liveMapFlights.length} active flight loaded, but VAMSYS did not return usable latitude/longitude for it.</span>
+    `;
+    canvas.appendChild(empty);
 }
 
 function renderLiveMapPopup(flight) {
@@ -197,7 +313,8 @@ function renderLiveMapList() {
                 <span>${escapeHtml(formatValue(flight.departure))} to ${escapeHtml(formatValue(flight.arrival))}</span>
                 <span>ALT ${escapeHtml(formatValue(flight.altitude))}</span>
                 <span>GS ${escapeHtml(formatValue(flight.speed))}</span>
-                <span>${flight.position ? `${flight.position.lat.toFixed(3)}, ${flight.position.lon.toFixed(3)}` : "No position"}</span>
+                <span>${flight.position ? `${flight.position.lat.toFixed(3)}, ${flight.position.lon.toFixed(3)}` : "No coordinates"}</span>
+                ${flight.position ? "" : `<span>Fields: ${escapeHtml(flight.positionDebug)}</span>`}
             </div>
         </article>
     `).join("");

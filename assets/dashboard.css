@@ -759,6 +759,7 @@
         }
 
         .live-map-canvas {
+            position: relative;
             width: 100%;
             min-height: 430px;
             overflow: hidden;
@@ -769,6 +770,35 @@
                 linear-gradient(90deg, rgba(255,255,255,0.055) 1px, transparent 1px),
                 rgba(2,5,10,0.72);
             background-size: 54px 54px;
+        }
+
+        .live-map-empty {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            z-index: 500;
+            display: grid;
+            gap: 8px;
+            width: min(420px, calc(100% - 40px));
+            transform: translate(-50%, -50%);
+            border: 1px solid rgba(255,196,0,0.24);
+            border-radius: 16px;
+            background: rgba(2,5,10,0.82);
+            padding: 18px;
+            text-align: center;
+            box-shadow: 0 18px 44px rgba(0,0,0,0.36);
+            pointer-events: none;
+        }
+
+        .live-map-empty strong {
+            color: #fff;
+            font-size: 16px;
+        }
+
+        .live-map-empty span {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.45;
         }
 
         .leaflet-container {
