@@ -125,7 +125,12 @@
 
         .menu {
             display: grid;
-            gap: 10px;
+            gap: 12px;
+        }
+
+        .menu-group {
+            display: grid;
+            gap: 7px;
         }
 
         .menu-btn {
@@ -159,6 +164,37 @@
             border-color: rgba(255,196,0,0.45);
             background: linear-gradient(90deg, rgba(215,25,32,0.36), rgba(255,196,0,0.12));
             color: #fff;
+        }
+
+        .submenu {
+            display: none;
+            gap: 6px;
+            padding-left: 12px;
+        }
+
+        .menu-group.open .submenu {
+            display: grid;
+        }
+
+        .submenu-btn {
+            width: 100%;
+            min-height: 36px;
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.04);
+            color: rgba(255,255,255,0.64);
+            cursor: pointer;
+            text-align: left;
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .submenu-btn:hover,
+        .submenu-btn.active {
+            border-color: rgba(255,196,0,0.34);
+            color: #fff;
+            background: rgba(255,196,0,0.08);
         }
 
         .sidebar-footer {
@@ -327,6 +363,18 @@
             background: rgba(0,0,0,0.18);
         }
 
+        .item-button {
+            width: 100%;
+            color: inherit;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .item-button:hover {
+            border-color: rgba(255,196,0,0.42);
+            background: rgba(255,196,0,0.08);
+        }
+
         .item-title {
             display: flex;
             align-items: center;
@@ -485,6 +533,10 @@
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
+            .submenu {
+                padding-left: 0;
+            }
+
             .sidebar-footer {
                 margin-top: 14px;
                 grid-template-columns: 1fr 130px;
@@ -537,22 +589,37 @@
                 </div>
 
                 <nav class="menu" aria-label="Dashboard sections">
-                    <button class="menu-btn" data-view="profile">
-                        <span>Pilot Profile</span>
-                        <small>Identity and rank</small>
-                    </button>
-                    <button class="menu-btn" data-view="booked">
-                        <span>Booked Flight</span>
-                        <small>Bookings and logbook</small>
-                    </button>
-                    <button class="menu-btn" data-view="dispatch">
-                        <span>Flight Dispatch</span>
-                        <small>Create and file</small>
-                    </button>
-                    <button class="menu-btn" data-view="telex">
-                        <span>TELEX</span>
-                        <small>Hoppie ACARS</small>
-                    </button>
+                    <div class="menu-group" data-group="profile">
+                        <button class="menu-btn" data-view="profile">
+                            <span>Pilot Profile</span>
+                            <small>Identity and rank</small>
+                        </button>
+                        <div class="submenu">
+                            <button class="submenu-btn" data-view="pirepLogbook">PIREP LOGBOOK</button>
+                        </div>
+                    </div>
+                    <div class="menu-group" data-group="flightCenter">
+                        <button class="menu-btn" data-view="flightCenter">
+                            <span>FLIGHT CENTER</span>
+                            <small>Bookings and OFP</small>
+                        </button>
+                        <div class="submenu">
+                            <button class="submenu-btn" data-view="showBooking">Show Pilot Booking</button>
+                            <button class="submenu-btn" data-view="simbriefOfp">SimBrief OFP</button>
+                        </div>
+                    </div>
+                    <div class="menu-group" data-group="flightStatus">
+                        <button class="menu-btn" data-link="flight-status.html">
+                            <span>FLIGHT STATUS</span>
+                            <small>Track map</small>
+                        </button>
+                    </div>
+                    <div class="menu-group" data-group="telex">
+                        <button class="menu-btn" data-view="telex">
+                            <span>TELEX</span>
+                            <small>Hoppie ACARS</small>
+                        </button>
+                    </div>
                 </nav>
 
                 <div class="sidebar-footer">
@@ -617,8 +684,12 @@
         }
 
         function setupNavigation() {
-            document.querySelectorAll(".menu-btn").forEach((button) => {
+            document.querySelectorAll(".menu-btn, .submenu-btn").forEach((button) => {
                 button.addEventListener("click", () => {
+                    if (button.dataset.link) {
+                        window.location.href = button.dataset.link;
+                        return;
+                    }
                     setView(button.dataset.view);
                 });
             });
@@ -632,8 +703,12 @@
 
         async function setView(view) {
             currentView = view;
-            document.querySelectorAll(".menu-btn").forEach((button) => {
+            document.querySelectorAll(".menu-btn, .submenu-btn").forEach((button) => {
                 button.classList.toggle("active", button.dataset.view === view);
+            });
+            document.querySelectorAll(".menu-group").forEach((group) => {
+                const isOpen = !!group.querySelector(`[data-view="${view}"]`);
+                group.classList.toggle("open", isOpen);
             });
             updateHeader(view);
             await refreshCurrentView(false);
@@ -643,8 +718,10 @@
             const copy = {
                 activities: ["Operations", "Activities", "Latest events, tours, and community activity registrations."],
                 profile: ["Pilot", "Pilot Profile", "Crew identity, network IDs, rank, and flight time."],
-                booked: ["Flights", "Booked Flight", "Bookings, PIREPs, claims, comments, and logbook overview."],
-                dispatch: ["Dispatch", "Flight Dispatch", "Booking creation, PIREP filing, SimBrief dispatch, and comments."],
+                pirepLogbook: ["Logbook", "PIREP LOGBOOK", "Select a PIREP to open the full pilot report."],
+                flightCenter: ["Flights", "FLIGHT CENTER", "Current bookings and dispatch documents."],
+                showBooking: ["Bookings", "Show Pilot Booking", "Select a booking to open full booking details."],
+                simbriefOfp: ["OFP", "SimBrief OFP", "Load the SimBrief OFP for a booking."],
                 telex: ["ACARS", "TELEX", "Hoppie ACARS style logon, inbox, and telex compose station."]
             }[view];
             document.getElementById("viewEyebrow").textContent = copy[0];
@@ -663,13 +740,18 @@
                 } else if (currentView === "profile") {
                     if (!pilotData || force) await loadPilotProfile();
                     renderProfile();
-                } else if (currentView === "booked") {
-                    if (!bookingsData || force) bookingsData = await loadBookings();
+                } else if (currentView === "pirepLogbook") {
                     if (!pirepsData || force) pirepsData = await loadPireps();
-                    if (!claimsData || force) claimsData = await loadClaims();
-                    renderBookedFlight();
-                } else if (currentView === "dispatch") {
-                    renderDispatch();
+                    renderPirepLogbook();
+                } else if (currentView === "flightCenter") {
+                    if (!bookingsData || force) bookingsData = await loadBookings();
+                    renderFlightCenter();
+                } else if (currentView === "showBooking") {
+                    if (!bookingsData || force) bookingsData = await loadBookings();
+                    renderShowBooking();
+                } else if (currentView === "simbriefOfp") {
+                    if (!bookingsData || force) bookingsData = await loadBookings();
+                    renderSimbriefOfp();
                 } else if (currentView === "telex") {
                     renderTelex();
                 }
@@ -848,6 +930,202 @@
                     </section>
                 </div>
             `;
+        }
+
+        function renderPirepLogbook() {
+            document.getElementById("mainPanel").innerHTML = `
+                <div class="grid">
+                    <section class="card">
+                        <h2>PIREP LOGBOOK</h2>
+                        <div class="list">
+                            ${renderPirepButtons(pirepsData || [])}
+                        </div>
+                    </section>
+                    <section class="card">
+                        <h2>SHOW PILOT PIREP</h2>
+                        <div id="pirepDetail">
+                            <p class="empty">Select a PIREP from the logbook.</p>
+                        </div>
+                    </section>
+                </div>
+            `;
+            document.querySelectorAll("[data-pirep-id]").forEach((button) => {
+                button.addEventListener("click", () => showPilotPirep(button.dataset.pirepId));
+            });
+        }
+
+        function renderFlightCenter() {
+            document.getElementById("mainPanel").innerHTML = `
+                <div class="grid">
+                    <section class="card">
+                        <h2>Current Bookings</h2>
+                        <div class="list">
+                            ${renderBookingButtons(bookingsData || [], "show")}
+                        </div>
+                    </section>
+                    <section class="card">
+                        <h2>OFP Ready</h2>
+                        <div class="list">
+                            ${renderBookingButtons(bookingsData || [], "simbrief")}
+                        </div>
+                    </section>
+                </div>
+            `;
+            bindBookingButtons();
+        }
+
+        function renderShowBooking() {
+            document.getElementById("mainPanel").innerHTML = `
+                <div class="grid">
+                    <section class="card">
+                        <h2>Show Pilot Booking</h2>
+                        <div class="list">
+                            ${renderBookingButtons(bookingsData || [], "show")}
+                        </div>
+                    </section>
+                    <section class="card">
+                        <h2>Booking Detail</h2>
+                        <div id="bookingDetail">
+                            <p class="empty">Select a booking to show full details.</p>
+                        </div>
+                    </section>
+                </div>
+            `;
+            bindBookingButtons();
+        }
+
+        function renderSimbriefOfp() {
+            document.getElementById("mainPanel").innerHTML = `
+                <div class="grid">
+                    <section class="card">
+                        <h2>SimBrief OFP</h2>
+                        <div class="list">
+                            ${renderBookingButtons(bookingsData || [], "simbrief")}
+                        </div>
+                    </section>
+                    <section class="card">
+                        <h2>OFP Data</h2>
+                        <div id="simbriefDetail">
+                            <p class="empty">Select a booking to load SimBrief OFP.</p>
+                        </div>
+                    </section>
+                </div>
+            `;
+            bindBookingButtons();
+        }
+
+        function renderPirepButtons(list) {
+            if (!Array.isArray(list) || list.length === 0) {
+                return `<p class="empty">No submitted PIREPs.</p>`;
+            }
+
+            return list.map((pirep) => `
+                <button class="item item-button" data-pirep-id="${escapeHtml(pirep.id)}">
+                    <div class="item-title">
+                        <span>${escapeHtml(`${formatValue(pirep.flight_number, "Flight")} ${formatValue(pirep.callsign, "")}`.trim())}</span>
+                        <span class="pill">${escapeHtml(formatValue(pirep.status, "PIREP"))}</span>
+                    </div>
+                    <div class="meta">
+                        <span>From: ${escapeHtml(formatValue(pirep.departure_icao || pirep.departure_id))}</span>
+                        <span>To: ${escapeHtml(formatValue(pirep.arrival_icao || pirep.arrival_id))}</span>
+                        <span>ID: ${escapeHtml(formatValue(pirep.id))}</span>
+                    </div>
+                </button>
+            `).join("");
+        }
+
+        function renderBookingButtons(list, action) {
+            if (!Array.isArray(list) || list.length === 0) {
+                return `<p class="empty">No active bookings.</p>`;
+            }
+
+            return list.map((booking) => `
+                <button class="item item-button" data-booking-id="${escapeHtml(booking.id)}" data-booking-action="${action}">
+                    <div class="item-title">
+                        <span>${escapeHtml(`${formatValue(booking.flight_number, "Flight")} ${formatValue(booking.callsign, "")}`.trim())}</span>
+                        <span class="pill">${escapeHtml(formatValue(booking.type, "Booking"))}</span>
+                    </div>
+                    <div class="meta">
+                        <span>From: ${escapeHtml(formatValue(booking.departure_icao || booking.departure_id))}</span>
+                        <span>To: ${escapeHtml(formatValue(booking.arrival_icao || booking.arrival_id))}</span>
+                        <span>ID: ${escapeHtml(formatValue(booking.id))}</span>
+                    </div>
+                </button>
+            `).join("");
+        }
+
+        function bindBookingButtons() {
+            document.querySelectorAll("[data-booking-id]").forEach((button) => {
+                button.addEventListener("click", () => {
+                    if (button.dataset.bookingAction === "simbrief") {
+                        showSimbriefOfp(button.dataset.bookingId);
+                    } else {
+                        showPilotBooking(button.dataset.bookingId);
+                    }
+                });
+            });
+        }
+
+        async function showPilotPirep(id) {
+            const box = document.getElementById("pirepDetail");
+            box.innerHTML = `<p class="empty">Loading PIREP ${escapeHtml(id)}...</p>`;
+            try {
+                const json = await fetchPilotJson(`/pireps/${id}`);
+                box.innerHTML = renderObjectDetails(json.data || {});
+            } catch (err) {
+                box.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+            }
+        }
+
+        async function showPilotBooking(id) {
+            const box = document.getElementById("bookingDetail");
+            if (!box) return;
+            box.innerHTML = `<p class="empty">Loading booking ${escapeHtml(id)}...</p>`;
+            try {
+                const json = await fetchPilotJson(`/bookings/${id}`);
+                box.innerHTML = renderObjectDetails(json.data || {});
+            } catch (err) {
+                box.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+            }
+        }
+
+        async function showSimbriefOfp(id) {
+            const box = document.getElementById("simbriefDetail");
+            if (!box) return;
+            box.innerHTML = `<p class="empty">Loading SimBrief OFP ${escapeHtml(id)}...</p>`;
+            try {
+                const json = await fetchPilotJson(`/bookings/${id}/simbrief`);
+                box.innerHTML = `<div class="message-log">${escapeHtml(JSON.stringify(json.data || json, null, 2))}</div>`;
+            } catch (err) {
+                box.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+            }
+        }
+
+        function renderObjectDetails(data) {
+            const rows = Object.entries(data || {}).filter(([, value]) => value !== null && value !== undefined);
+            if (rows.length === 0) return `<p class="empty">No detail returned.</p>`;
+
+            return `
+                <div class="data-list">
+                    ${rows.map(([key, value]) => `
+                        <div class="data-row">
+                            <span>${escapeHtml(formatLabel(key))}</span>
+                            <strong>${escapeHtml(formatDetailValue(value))}</strong>
+                        </div>
+                    `).join("")}
+                </div>
+            `;
+        }
+
+        function formatDetailValue(value) {
+            if (typeof value === "object" && value !== null) {
+                return JSON.stringify(value);
+            }
+            return formatValue(value);
+        }
+
+        function formatLabel(key) {
+            return key.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
         }
 
         function renderBookedFlight() {

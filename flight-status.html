@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>HISPAFLY EFB | Flight Status</title>
+    <style>
+        :root {
+            --red: #d71920;
+            --yellow: #ffc400;
+            --line: rgba(255,255,255,0.14);
+            --muted: rgba(255,255,255,0.66);
+            --danger: #ff6b6b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            overflow: hidden;
+            background: #05080d;
+            color: #fff;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background:
+                linear-gradient(90deg, rgba(1,3,7,0.95) 0%, rgba(1,3,7,0.82) 35%, rgba(1,3,7,0.48) 100%),
+                url("assets/login-tablet-bg.jpg");
+            background-size: cover;
+            background-position: center;
+        }
+
+        .app {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: grid;
+            grid-template-rows: 30px 1fr;
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 18px;
+            background: rgba(0,0,0,0.56);
+            border-bottom: 1px solid rgba(255,255,255,0.10);
+            color: rgba(255,255,255,0.78);
+            font-size: 11px;
+        }
+
+        .status-right,
+        .signal {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .signal {
+            align-items: end;
+            gap: 2px;
+            height: 12px;
+        }
+
+        .signal span {
+            width: 3px;
+            border-radius: 2px;
+            background: rgba(255,255,255,0.82);
+        }
+
+        .signal span:nth-child(1) { height: 4px; }
+        .signal span:nth-child(2) { height: 7px; }
+        .signal span:nth-child(3) { height: 10px; }
+        .signal span:nth-child(4) { height: 12px; background: rgba(255,255,255,0.38); }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 320px minmax(0, 1fr);
+            min-height: calc(100vh - 30px);
+        }
+
+        .sidebar {
+            padding: 26px 20px;
+            border-right: 1px solid var(--line);
+            background: rgba(1,3,7,0.82);
+            backdrop-filter: blur(12px);
+            overflow: auto;
+        }
+
+        .logo {
+            width: 220px;
+            display: block;
+            margin-bottom: 28px;
+        }
+
+        .back {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 42px;
+            border: 1px solid rgba(255,255,255,0.16);
+            border-radius: 999px;
+            color: #fff;
+            text-decoration: none;
+            font-weight: 800;
+            margin-bottom: 18px;
+            background: rgba(255,255,255,0.06);
+        }
+
+        .list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .pirep-btn {
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.06);
+            color: #fff;
+            cursor: pointer;
+            text-align: left;
+            padding: 13px;
+        }
+
+        .pirep-btn:hover,
+        .pirep-btn.active {
+            border-color: rgba(255,196,0,0.44);
+            background: rgba(255,196,0,0.08);
+        }
+
+        .pirep-btn strong {
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .pirep-btn span,
+        .muted {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .main {
+            min-width: 0;
+            padding: 28px;
+            overflow: hidden;
+        }
+
+        .header {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+
+        .eyebrow {
+            color: var(--yellow);
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        h1 {
+            font-size: clamp(30px, 3vw, 44px);
+            line-height: 1;
+        }
+
+        .refresh {
+            min-width: 118px;
+            min-height: 42px;
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 999px;
+            background: rgba(255,255,255,0.08);
+            color: #fff;
+            cursor: pointer;
+            font-weight: 800;
+        }
+
+        .map-panel {
+            height: calc(100vh - 148px);
+            border: 1px solid var(--line);
+            border-radius: 22px;
+            background: rgba(4,7,12,0.62);
+            box-shadow: 0 24px 80px rgba(0,0,0,0.38);
+            overflow: hidden;
+            display: grid;
+            grid-template-rows: 1fr auto;
+            backdrop-filter: blur(14px);
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            background:
+                linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px),
+                radial-gradient(circle at 50% 50%, rgba(255,196,0,0.10), transparent 34%),
+                rgba(0,0,0,0.28);
+            background-size: 42px 42px, 42px 42px, auto, auto;
+        }
+
+        .map-footer {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            padding: 14px;
+            border-top: 1px solid rgba(255,255,255,0.10);
+            background: rgba(0,0,0,0.28);
+        }
+
+        .stat {
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 12px;
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .stat span {
+            display: block;
+            color: var(--muted);
+            font-size: 11px;
+            margin-bottom: 4px;
+        }
+
+        .stat strong {
+            display: block;
+            font-size: 14px;
+        }
+
+        .error {
+            color: var(--danger);
+        }
+
+        @media (max-width: 820px) {
+            body {
+                overflow: auto;
+            }
+
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                border-right: 0;
+                border-bottom: 1px solid var(--line);
+            }
+
+            .map-panel {
+                height: 70svh;
+            }
+
+            .map-footer {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="app">
+        <div class="status-bar" aria-hidden="true">
+            <span id="utcTime">--:-- UTC</span>
+            <span>HISPAFLY EFB</span>
+            <span class="status-right">
+                <span class="signal"><span></span><span></span><span></span><span></span></span>
+                <span>100%</span>
+            </span>
+        </div>
+
+        <div class="layout">
+            <aside class="sidebar">
+                <img class="logo" src="assets/hispafly-logo-white.png" alt="HISPAFLY">
+                <a class="back" href="dashboard.html">BACK TO DASHBOARD</a>
+                <div class="list" id="pirepList">
+                    <p class="muted">Loading PIREPs...</p>
+                </div>
+            </aside>
+
+            <section class="main">
+                <div class="header">
+                    <div>
+                        <div class="eyebrow">Flight Status</div>
+                        <h1>Track Map</h1>
+                        <p class="muted" id="statusText">Select a PIREP to draw recorded position reports.</p>
+                    </div>
+                    <button class="refresh" id="refreshBtn">REFRESH</button>
+                </div>
+
+                <div class="map-panel">
+                    <canvas id="trackCanvas"></canvas>
+                    <div class="map-footer">
+                        <div class="stat"><span>PIREP</span><strong id="statPirep">N/A</strong></div>
+                        <div class="stat"><span>Points</span><strong id="statPoints">0</strong></div>
+                        <div class="stat"><span>Max Altitude</span><strong id="statAltitude">N/A</strong></div>
+                        <div class="stat"><span>Last Update</span><strong id="statUpdate">N/A</strong></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        const API_ROOT = "https://vamsys.io/api/v3/pilot";
+        const accessToken = localStorage.getItem("vamsys_token");
+        let pireps = [];
+        let selectedPirepId = null;
+
+        if (!accessToken) {
+            window.location.href = "index.html";
+        }
+
+        const authHeader = {
+            "Authorization": `Bearer ${accessToken}`,
+            "Accept": "application/json"
+        };
+
+        window.addEventListener("DOMContentLoaded", () => {
+            updateUtcTime();
+            setInterval(updateUtcTime, 30000);
+            document.getElementById("refreshBtn").addEventListener("click", () => {
+                if (selectedPirepId) loadTrack(selectedPirepId);
+                else loadPireps();
+            });
+            loadPireps();
+            drawEmptyMap();
+        });
+
+        function updateUtcTime() {
+            const now = new Date();
+            document.getElementById("utcTime").textContent =
+                `${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")} UTC`;
+        }
+
+        async function fetchPilotJson(path, params = {}) {
+            const url = new URL(`${API_ROOT}${path}`);
+            Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+            const res = await fetch(url, { headers: authHeader });
+            const text = await res.text();
+            const json = text ? JSON.parse(text) : { data: null };
+            if (!res.ok) {
+                const msg = json.message || json.error || JSON.stringify(json).slice(0, 180);
+                throw new Error(`VAMSYS ${path} failed (HTTP ${res.status}): ${msg}`);
+            }
+            return json;
+        }
+
+        async function loadPireps() {
+            const box = document.getElementById("pirepList");
+            box.innerHTML = `<p class="muted">Loading PIREPs...</p>`;
+            try {
+                const json = await fetchPilotJson("/pireps", { sort: "-id", "page[size]": "20" });
+                pireps = json.data || [];
+                if (pireps.length === 0) {
+                    box.innerHTML = `<p class="muted">No PIREPs returned.</p>`;
+                    return;
+                }
+                box.innerHTML = pireps.map((pirep) => `
+                    <button class="pirep-btn" data-pirep-id="${escapeHtml(pirep.id)}">
+                        <strong>${escapeHtml(`${formatValue(pirep.flight_number, "Flight")} ${formatValue(pirep.callsign, "")}`.trim())}</strong>
+                        <span>${escapeHtml(formatValue(pirep.departure_id))} to ${escapeHtml(formatValue(pirep.arrival_id))} | ${escapeHtml(formatValue(pirep.status))}</span>
+                    </button>
+                `).join("");
+                document.querySelectorAll("[data-pirep-id]").forEach((button) => {
+                    button.addEventListener("click", () => loadTrack(button.dataset.pirepId));
+                });
+            } catch (err) {
+                box.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+            }
+        }
+
+        async function loadTrack(id) {
+            selectedPirepId = id;
+            document.querySelectorAll("[data-pirep-id]").forEach((button) => {
+                button.classList.toggle("active", button.dataset.pirepId === id);
+            });
+            document.getElementById("statusText").textContent = `Loading recorded positions for PIREP ${id}...`;
+
+            try {
+                const [positionsResult, profileResult] = await Promise.allSettled([
+                    fetchPilotJson(`/pireps/${id}/positions`),
+                    fetchPilotJson(`/pireps/${id}/profile`)
+                ]);
+                const positions = positionsResult.status === "fulfilled" ? (positionsResult.value.data || positionsResult.value || []) : [];
+                const profile = profileResult.status === "fulfilled" ? (profileResult.value.data || {}) : {};
+                drawTrack(Array.isArray(positions) ? positions : [], profile, id);
+            } catch (err) {
+                document.getElementById("statusText").innerHTML = `<span class="error">${escapeHtml(err.message)}</span>`;
+            }
+        }
+
+        function drawEmptyMap() {
+            const canvas = setupCanvas();
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = "rgba(255,255,255,0.62)";
+            ctx.font = "18px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("Select a PIREP to view recorded track", canvas.width / 2, canvas.height / 2);
+        }
+
+        function drawTrack(points, profile, id) {
+            const canvas = setupCanvas();
+            const ctx = canvas.getContext("2d");
+            const valid = points.filter((p) => Number.isFinite(Number(p.latitude)) && Number.isFinite(Number(p.longitude)));
+
+            if (valid.length < 2) {
+                drawEmptyMap();
+                document.getElementById("statusText").textContent = "No latitude/longitude position reports were returned. vAMSYS profile data can still support altitude and speed charts, but not a route map.";
+                updateStats(id, valid, profile);
+                return;
+            }
+
+            const lats = valid.map((p) => Number(p.latitude));
+            const lons = valid.map((p) => Number(p.longitude));
+            const minLat = Math.min(...lats);
+            const maxLat = Math.max(...lats);
+            const minLon = Math.min(...lons);
+            const maxLon = Math.max(...lons);
+            const pad = 58;
+
+            const project = (point) => {
+                const x = pad + ((Number(point.longitude) - minLon) / Math.max(maxLon - minLon, 0.0001)) * (canvas.width - pad * 2);
+                const y = canvas.height - pad - ((Number(point.latitude) - minLat) / Math.max(maxLat - minLat, 0.0001)) * (canvas.height - pad * 2);
+                return { x, y };
+            };
+
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = "#ffc400";
+            ctx.shadowColor = "rgba(255,196,0,0.45)";
+            ctx.shadowBlur = 18;
+            ctx.beginPath();
+            valid.forEach((point, index) => {
+                const p = project(point);
+                if (index === 0) ctx.moveTo(p.x, p.y);
+                else ctx.lineTo(p.x, p.y);
+            });
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            drawMarker(ctx, project(valid[0]), "#72f0a3", "DEP");
+            drawMarker(ctx, project(valid[valid.length - 1]), "#ff6b6b", "ARR");
+            document.getElementById("statusText").textContent = "Recorded position reports loaded. This uses vAMSYS PIREP data, not a confirmed live tracking endpoint.";
+            updateStats(id, valid, profile);
+        }
+
+        function drawMarker(ctx, point, color, label) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, 7, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#fff";
+            ctx.font = "12px Arial";
+            ctx.fillText(label, point.x + 12, point.y - 10);
+        }
+
+        function setupCanvas() {
+            const canvas = document.getElementById("trackCanvas");
+            const rect = canvas.getBoundingClientRect();
+            const scale = window.devicePixelRatio || 1;
+            canvas.width = Math.max(1, Math.floor(rect.width * scale));
+            canvas.height = Math.max(1, Math.floor(rect.height * scale));
+            const ctx = canvas.getContext("2d");
+            ctx.setTransform(scale, 0, 0, scale, 0, 0);
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            return canvas;
+        }
+
+        function updateStats(id, positions, profile) {
+            const altitudeValues = [
+                ...positions.map((p) => Number(p.altitude)).filter(Number.isFinite),
+                ...(profile.altitude || []).map((p) => Number(p.y)).filter(Number.isFinite)
+            ];
+            document.getElementById("statPirep").textContent = id || "N/A";
+            document.getElementById("statPoints").textContent = String(positions.length);
+            document.getElementById("statAltitude").textContent = altitudeValues.length ? `${Math.max(...altitudeValues)} ft` : "N/A";
+            document.getElementById("statUpdate").textContent = positions.length ? formatDate(positions[positions.length - 1].created_at) : "N/A";
+        }
+
+        function formatValue(value, fallback = "N/A") {
+            return value === undefined || value === null || value === "" ? fallback : value;
+        }
+
+        function formatDate(value) {
+            if (!value) return "N/A";
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+        }
+
+        function escapeHtml(value) {
+            return String(formatValue(value, ""))
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
