@@ -1,16 +1,22 @@
 let cdmAirportLastSearch = "";
+let cdmCallsignLastSearch = "";
 
 function renderCdmAirport() {
     document.getElementById("mainPanel").innerHTML = `
         <div class="grid">
             <section class="card wide">
                 <h2>CDM Airport Status</h2>
-                <div class="weather-form">
+                <div class="cdm-search-grid">
                     <div class="field" style="margin:0;">
                         <label for="cdmAirportInput">Airport ICAO</label>
                         <input id="cdmAirportInput" autocomplete="off" maxlength="4" placeholder="LEPA" value="${escapeHtml(cdmAirportLastSearch)}">
                     </div>
                     <button class="primary-btn" id="cdmAirportBtn">SEARCH CDM</button>
+                    <div class="field" style="margin:0;">
+                        <label for="cdmCallsignInput">Callsign</label>
+                        <input id="cdmCallsignInput" autocomplete="off" maxlength="12" placeholder="HPF123" value="${escapeHtml(cdmCallsignLastSearch)}">
+                    </div>
+                    <button class="primary-btn" id="cdmCallsignBtn">SEARCH AIRCRAFT</button>
                 </div>
             </section>
             <section class="card wide">
@@ -23,9 +29,14 @@ function renderCdmAirport() {
     `;
 
     const input = document.getElementById("cdmAirportInput");
+    const callsignInput = document.getElementById("cdmCallsignInput");
     document.getElementById("cdmAirportBtn").addEventListener("click", requestCdmAirportStatus);
+    document.getElementById("cdmCallsignBtn").addEventListener("click", requestCdmPlaneStatus);
     input.addEventListener("keydown", (event) => {
         if (event.key === "Enter") requestCdmAirportStatus();
+    });
+    callsignInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") requestCdmPlaneStatus();
     });
 }
 
@@ -53,6 +64,29 @@ async function requestCdmAirportStatus() {
     }
 }
 
+async function requestCdmPlaneStatus() {
+    const input = document.getElementById("cdmCallsignInput");
+    const result = document.getElementById("cdmAirportResult");
+    const callsign = input.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    input.value = callsign;
+    cdmCallsignLastSearch = callsign;
+
+    if (!callsign) {
+        result.innerHTML = `<p class="error">Enter a valid callsign.</p>`;
+        return;
+    }
+
+    result.innerHTML = `<p class="empty">Loading CDM status for ${escapeHtml(callsign)}...</p>`;
+    try {
+        const res = await fetch(`/api/cdm-plane?callsign=${encodeURIComponent(callsign)}`);
+        const json = await res.json();
+        if (!res.ok || json.error) throw new Error(json.message || json.error || `CDM HTTP ${res.status}`);
+        result.innerHTML = renderCdmPlaneData(callsign, json);
+    } catch (err) {
+        result.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+    }
+}
+
 function renderCdmAirportData(airport, flights) {
     if (!Array.isArray(flights) || flights.length === 0) {
         return `<p class="empty">No CDM aircraft returned for ${escapeHtml(airport)}.</p>`;
@@ -75,6 +109,33 @@ function renderCdmAirportData(airport, flights) {
     `;
 }
 
+function renderCdmPlaneData(callsign, payload) {
+    const flights = normalizeCdmPlanePayload(payload);
+    if (!flights.length) {
+        return `<p class="empty">No CDM aircraft returned for ${escapeHtml(callsign)}.</p>`;
+    }
+
+    return `
+        <div class="cdm-summary">
+            ${cdmStat("Callsign", callsign)}
+            ${cdmStat("Matches", flights.length)}
+            ${cdmStat("Departure", flights[0]?.departure)}
+            ${cdmStat("Arrival", flights[0]?.arrival)}
+        </div>
+        <div class="cdm-list">
+            ${flights.map((flight, index) => renderCdmFlight(flight, index + 1)).join("")}
+        </div>
+    `;
+}
+
+function normalizeCdmPlanePayload(payload) {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (payload?.callsign || payload?.cdmData || payload?.atfcmStatus) return [payload];
+    if (payload?.data && typeof payload.data === "object") return [payload.data];
+    return [];
+}
+
 function renderCdmFlight(flight, sequence) {
     const cdm = flight.cdmData || {};
     const status = flight.atfcmStatus || "N/A";
@@ -89,7 +150,7 @@ function renderCdmFlight(flight, sequence) {
         ["Requested ASRT", cdm.reqAsrt],
         ["Requested TOBT", cdm.reqTobt],
         ["Requested TOBT Type", cdm.reqTobtType],
-        ["Confirmed", isCdmConfirmed(cdm.confirmed) ? "YES" : cdm.confirmed === false || cdm.confirmed === "false" ? "NO" : cdm.confirmed]
+        ["CDM Status", formatCdmConfirmation(cdm)]
     ].filter(([, value]) => value !== undefined && value !== null && value !== "");
 
     return `
@@ -143,4 +204,11 @@ function cdmStat(label, value) {
 
 function isCdmConfirmed(value) {
     return value === true || String(value).toLowerCase() === "true";
+}
+
+function formatCdmConfirmation(cdm) {
+    if (isCdmConfirmed(cdm?.confirmed)) return "CONFIRMED";
+    const hasAnySlot = !!(cdm?.tsat || cdm?.ttot || cdm?.ctot || cdm?.tobt);
+    if (hasAnySlot) return "UNCONFIRMED";
+    return "PENDING";
 }

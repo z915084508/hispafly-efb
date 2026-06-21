@@ -632,6 +632,13 @@
             margin-bottom: 14px;
         }
 
+        .cdm-search-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 170px minmax(0, 1fr) 190px;
+            gap: 12px;
+            align-items: end;
+        }
+
         .cdm-list {
             display: grid;
             gap: 12px;
@@ -927,6 +934,7 @@
             .telex-menu-grid,
             .cdm-summary,
             .cdm-data-grid,
+            .cdm-search-grid,
             .weather-form {
                 grid-template-columns: 1fr;
             }
