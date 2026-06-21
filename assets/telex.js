@@ -2,6 +2,7 @@ const telexState = {
     connected: false,
     currentAtcUnit: "",
     pendingLogon: "",
+    page: "menu",
     messageCounter: Number(localStorage.getItem("hpf_telex_counter") || "1"),
     messages: []
 };
@@ -55,76 +56,143 @@ function renderTelexWorkbenchMarkup(context) {
                     ${renderTelexMessages()}
                 </div>
             </section>
-            <section class="card">
-                <h2>ATC LOGON</h2>
-                <div class="field">
-                    <label for="atsuInput">ATSU</label>
-                    <input id="atsuInput" autocomplete="off" maxlength="8" placeholder="LECM" value="${escapeHtml(telexState.currentAtcUnit || "")}">
-                </div>
-                <button class="primary-btn" id="sendAtcLogonBtn">${telexState.currentAtcUnit ? "LOGOFF ATSU" : "REQUEST LOGON"}</button>
-                <p class="empty" style="margin-top:10px;">Used for CPDLC connection management with an online ATSU.</p>
-            </section>
-            <section class="card">
-                <h2>Pre Departure Clearance</h2>
-                <div class="field">
-                    <label for="dclTo">Station</label>
-                    <input id="dclTo" autocomplete="off" placeholder="Departure station" value="${escapeHtml(context.dep !== "N/A" ? context.dep : "SERVER")}">
-                </div>
-                <div class="grid" style="gap:10px;">
-                    <div class="field">
-                        <label for="dclStand">Stand</label>
-                        <input id="dclStand" autocomplete="off" placeholder="A12">
-                    </div>
-                    <div class="field">
-                        <label for="dclAtis">ATIS</label>
-                        <input id="dclAtis" autocomplete="off" maxlength="1" placeholder="A">
-                    </div>
-                </div>
-                <div class="field">
-                    <label for="dclRemarks">Remarks</label>
-                    <input id="dclRemarks" autocomplete="off" maxlength="90" placeholder="Optional">
-                </div>
-                <button class="primary-btn" id="sendDclBtn">REQUEST DCL</button>
-            </section>
-            <section class="card">
-                <h2>CPDLC Notification</h2>
-                <div class="field">
-                    <label for="requestTo">ATSU</label>
-                    <input id="requestTo" autocomplete="off" placeholder="Current ATSU" value="${escapeHtml(telexState.currentAtcUnit || "")}">
-                </div>
-                <div class="field">
-                    <label for="requestType">Request</label>
-                    <select id="requestType">
-                        <option value="LEVEL">LEVEL</option>
-                        <option value="DIRECT">DIRECT</option>
-                        <option value="SPEED">SPEED</option>
-                        <option value="WHEN">WHEN CAN WE?</option>
-                        <option value="WILCO">WILCO</option>
-                        <option value="UNABLE">UNABLE</option>
-                        <option value="STANDBY">STANDBY</option>
-                    </select>
-                </div>
-                <div class="field">
-                    <label for="requestValue">Value</label>
-                    <input id="requestValue" autocomplete="off" placeholder="FL380 / FIX / 280K / HIGHER LEVEL">
-                </div>
-                <div class="field">
-                    <label for="requestReason">Reason</label>
-                    <select id="requestReason">
-                        <option value="">None</option>
-                        <option value="DUE TO WX">Due to WX</option>
-                        <option value="DUE TO A/C PERFORMANCE">Due to A/C performance</option>
-                    </select>
-                </div>
-                <button class="primary-btn" id="sendCpdlcRequestBtn">SEND CPDLC</button>
-                <button class="logout-btn" style="width:100%;margin-top:10px;" id="loadVatsimPlanBtn">LOAD VATSIM FLIGHT PLAN</button>
-            </section>
+            ${renderTelexPageMarkup(context)}
         </div>
+    `;
+}
+
+function renderTelexPageMarkup(context) {
+    if (telexState.page === "atcLogon") return renderAtcLogonPage();
+    if (telexState.page === "dcl") return renderDclPage(context);
+    if (telexState.page === "cpdlc") return renderCpdlcPage();
+    return renderTelexMenuPage();
+}
+
+function renderTelexMenuPage() {
+    const cards = [
+        ["atcLogon", "ATC LOGON", "Connect or log off a CPDLC ATSU."],
+        ["dcl", "Pre Departure Clearance", "Request your pre-departure clearance."],
+        ["cpdlc", "CPDLC Notification", "Send climb, descent, direct, speed, and reply messages."]
+    ];
+
+    return `
+        <section class="card wide">
+            <h2>TELEX Functions</h2>
+            <div class="telex-menu-grid">
+                ${cards.map(([page, title, copy]) => `
+                    <button class="item item-button telex-entry" data-telex-page="${page}">
+                        <div class="item-title">
+                            <span>${escapeHtml(title)}</span>
+                            <span class="pill">OPEN</span>
+                        </div>
+                        <p>${escapeHtml(copy)}</p>
+                    </button>
+                `).join("")}
+            </div>
+        </section>
+    `;
+}
+
+function renderTelexPageHeader(title) {
+    return `
+        <div class="item-title">
+            <h2 style="margin:0;">${escapeHtml(title)}</h2>
+            <button class="logout-btn" style="width:auto;padding:0 16px;" id="backTelexMenuBtn">BACK TO TELEX MENU</button>
+        </div>
+    `;
+}
+
+function renderAtcLogonPage() {
+    return `
+        <section class="card wide">
+            ${renderTelexPageHeader("ATC LOGON")}
+            <div class="field">
+                <label for="atsuInput">ATSU</label>
+                <input id="atsuInput" autocomplete="off" maxlength="8" placeholder="LECM" value="${escapeHtml(telexState.currentAtcUnit || "")}">
+            </div>
+            <button class="primary-btn" id="sendAtcLogonBtn">${telexState.currentAtcUnit ? "LOGOFF ATSU" : "REQUEST LOGON"}</button>
+            <p class="empty" style="margin-top:10px;">Used for CPDLC connection management with an online ATSU.</p>
+        </section>
+    `;
+}
+
+function renderDclPage(context) {
+    return `
+        <section class="card wide">
+            ${renderTelexPageHeader("Pre Departure Clearance")}
+            <div class="field">
+                <label for="dclTo">Station</label>
+                <input id="dclTo" autocomplete="off" placeholder="Departure station" value="${escapeHtml(context.dep !== "N/A" ? context.dep : "SERVER")}">
+            </div>
+            <div class="grid" style="gap:10px;">
+                <div class="field">
+                    <label for="dclStand">Stand</label>
+                    <input id="dclStand" autocomplete="off" placeholder="A12">
+                </div>
+                <div class="field">
+                    <label for="dclAtis">ATIS</label>
+                    <input id="dclAtis" autocomplete="off" maxlength="1" placeholder="A">
+                </div>
+            </div>
+            <div class="field">
+                <label for="dclRemarks">Remarks</label>
+                <input id="dclRemarks" autocomplete="off" maxlength="90" placeholder="Optional">
+            </div>
+            <button class="primary-btn" id="sendDclBtn">REQUEST DCL</button>
+        </section>
+    `;
+}
+
+function renderCpdlcPage() {
+    return `
+        <section class="card wide">
+            ${renderTelexPageHeader("CPDLC Notification")}
+            <div class="field">
+                <label for="requestTo">ATSU</label>
+                <input id="requestTo" autocomplete="off" placeholder="Current ATSU" value="${escapeHtml(telexState.currentAtcUnit || "")}">
+            </div>
+            <div class="field">
+                <label for="requestType">Request</label>
+                <select id="requestType">
+                    <option value="LEVEL">LEVEL</option>
+                    <option value="DIRECT">DIRECT</option>
+                    <option value="SPEED">SPEED</option>
+                    <option value="WHEN">WHEN CAN WE?</option>
+                    <option value="WILCO">WILCO</option>
+                    <option value="UNABLE">UNABLE</option>
+                    <option value="STANDBY">STANDBY</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="requestValue">Value</label>
+                <input id="requestValue" autocomplete="off" placeholder="FL380 / FIX / 280K / HIGHER LEVEL">
+            </div>
+            <div class="field">
+                <label for="requestReason">Reason</label>
+                <select id="requestReason">
+                    <option value="">None</option>
+                    <option value="DUE TO WX">Due to WX</option>
+                    <option value="DUE TO A/C PERFORMANCE">Due to A/C performance</option>
+                </select>
+            </div>
+            <button class="primary-btn" id="sendCpdlcRequestBtn">SEND CPDLC</button>
+            <button class="logout-btn" style="width:100%;margin-top:10px;" id="loadVatsimPlanBtn">LOAD VATSIM FLIGHT PLAN</button>
+        </section>
     `;
 }
 
 function bindTelexWorkbench() {
     document.getElementById("telexPollBtn")?.addEventListener("click", () => hoppieRequest("poll"));
+    document.querySelectorAll("[data-telex-page]").forEach((button) => {
+        button.addEventListener("click", () => {
+            telexState.page = button.dataset.telexPage;
+            refreshTelexWorkbench();
+        });
+    });
+    document.getElementById("backTelexMenuBtn")?.addEventListener("click", () => {
+        telexState.page = "menu";
+        refreshTelexWorkbench();
+    });
     document.getElementById("sendAtcLogonBtn")?.addEventListener("click", sendAtcLogonToggle);
     document.getElementById("sendDclBtn")?.addEventListener("click", sendDclRequest);
     document.getElementById("sendCpdlcRequestBtn")?.addEventListener("click", sendCpdlcRequest);

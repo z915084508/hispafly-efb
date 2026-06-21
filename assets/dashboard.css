@@ -502,6 +502,22 @@
             margin-top: 12px;
         }
 
+        .telex-menu-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .telex-entry {
+            min-height: 118px;
+        }
+
+        .telex-entry p {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
         .field {
             display: grid;
             gap: 6px;
@@ -842,6 +858,7 @@
             .action-grid,
             .telex,
             .telex-workbench,
+            .telex-menu-grid,
             .weather-form {
                 grid-template-columns: 1fr;
             }
