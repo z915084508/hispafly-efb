@@ -348,6 +348,7 @@ async function hoppieRequest(action, overrides = {}) {
         if (!res.ok || json.error) throw new Error(json.message || json.error || `HTTP ${res.status}`);
 
         telexState.connected = true;
+        updateTelexConnectionUi();
         status.textContent = action === "poll" ? "INBOX CHECKED" : "CONNECTED";
         if (action === "send") {
             addTelexMessage({ direction: "OUT", to, type: overrides.type || json.type || "TELEX", packet: overrides.display || packet });
@@ -359,6 +360,13 @@ async function hoppieRequest(action, overrides = {}) {
         status.textContent = "ERROR";
         appendTelexLog(`HOPPIE ERROR: ${err.message}`);
     }
+}
+
+function updateTelexConnectionUi() {
+    const button = document.getElementById("telexConnectBtn");
+    const status = document.getElementById("telexStatus");
+    if (button) button.textContent = telexState.connected ? "DISCONNECT" : "CONNECT";
+    if (status) status.textContent = telexState.connected ? "CONNECTED" : "LOGGED OFF";
 }
 
 function handleHoppieMessages(messages) {
