@@ -435,8 +435,19 @@
 
         .telex {
             display: grid;
-            grid-template-columns: 320px minmax(0, 1fr) 340px;
+            grid-template-columns: minmax(0, 1fr);
             gap: 14px;
+        }
+
+        .telex-connection {
+            max-width: 560px;
+        }
+
+        .telex-workbench {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+            margin-top: 14px;
         }
 
         .telex-status {
@@ -814,6 +825,7 @@
             .grid,
             .action-grid,
             .telex,
+            .telex-workbench,
             .weather-form {
                 grid-template-columns: 1fr;
             }
@@ -1541,24 +1553,32 @@
             const box = document.getElementById("pirepDetail");
             box.innerHTML = `<p class="empty">Loading PIREP ${escapeHtml(id)}...</p>`;
             try {
-                const [detailResult, positionsResult, profileResult] = await Promise.allSettled([
-                    fetchPilotJson(`/pireps/${id}`),
-                    fetchPilotJson(`/pireps/${id}/positions`),
-                    fetchPilotJson(`/pireps/${id}/profile`)
-                ]);
+                const detailResult = await fetchPilotJson(`/pireps/${id}`);
 
-                if (detailResult.status === "rejected") throw detailResult.reason;
-
-                const detail = detailResult.value.data || detailResult.value || {};
-                const positions = positionsResult.status === "fulfilled" ? unwrapList(positionsResult.value) : [];
-                const profile = profileResult.status === "fulfilled" ? unwrapList(profileResult.value) : [];
+                const detail = detailResult.data || detailResult || {};
                 box.innerHTML = `
                     ${renderObjectDetails(detail)}
-                    ${renderPirepTrack(positions, profile, id)}
+                    <div class="detail-actions">
+                        <button class="primary-btn" id="openFlightTrackBtn">OPEN FLIGHT TRACK</button>
+                    </div>
                 `;
+                document.getElementById("openFlightTrackBtn").addEventListener("click", () => showDashboardFlightTrack(id));
             } catch (err) {
                 box.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
             }
+        }
+
+        function showDashboardFlightTrack(id) {
+            document.getElementById("mainPanel").innerHTML = `
+                <section class="card wide" style="height:100%;min-height:640px;">
+                    <div class="item-title">
+                        <h2 style="margin:0;">Flight Track</h2>
+                        <button class="logout-btn" style="width:auto;padding:0 18px;" id="backToPirepsBtn">BACK TO LOGBOOK</button>
+                    </div>
+                    <iframe class="pdf-frame" style="min-height:560px;background:#07111f;" src="flight-status.html?pirep=${encodeURIComponent(id)}&embedded=1" title="Flight Track"></iframe>
+                </section>
+            `;
+            document.getElementById("backToPirepsBtn").addEventListener("click", renderPirepLogbook);
         }
 
         async function showPilotBooking(id) {
@@ -1706,9 +1726,17 @@
             const used = new Set(["flight_number", "callsign", "departure_id", "arrival_id", "departure_time", "arrival_time", "status", "type", "network", "user_route", "altitude", "distance", "flight_time", "landing_rate", "fuel_used", "pirep_id", "booking_id", "id", "aircraft_id"]);
             const extras = Object.entries(data)
                 .filter(([key, value]) => !used.has(key) && value !== null && value !== undefined && typeof value !== "object")
-                .map(([key, value]) => [formatLabel(key), value]);
+                .map(([key, value]) => [formatLabel(key), formatExtraDetailValue(key, value)]);
 
             return [...preferred, ...extras];
+        }
+
+        function formatExtraDetailValue(key, value) {
+            const airportKey = /(^|_)airport_id$/.test(key) || ["departure_id", "arrival_id", "origin_id", "destination_id"].includes(key);
+            if (airportKey) {
+                return lookupAirport(value)?.icao || value;
+            }
+            return value;
         }
 
         function renderLidoOfp(raw) {
@@ -1838,8 +1866,7 @@
             const id = data?.[`${side}_id`];
             const airport = lookupAirport(id);
             if (airport) {
-                const code = airport.icao || airport.iata || `Airport #${airport.id}`;
-                return airport.name ? `${code} - ${airport.name}` : code;
+                return airport.icao || airport.iata || `Airport #${airport.id}`;
             }
             return id ? `Airport #${id}` : "N/A";
         }
@@ -2064,7 +2091,7 @@
             const context = buildTelexContext();
             document.getElementById("mainPanel").innerHTML = `
                 <div class="telex">
-                    <section class="card">
+                    <section class="card telex-connection">
                         <div class="item-title">
                             <h2 style="margin:0;">Connection</h2>
                             <span class="telex-status" id="telexStatus">LOGGED OFF</span>
@@ -2078,68 +2105,97 @@
                             <input id="telexCode" type="password" autocomplete="off" placeholder="Saved in Pilot Profile" value="${escapeHtml(context.logonCode)}">
                         </div>
                         <button class="primary-btn" id="telexLogonBtn">LOGON</button>
-                        <button class="logout-btn" style="width:100%;margin-top:10px;" id="telexPollBtn">POLL INBOX</button>
-                        <button class="logout-btn" style="width:100%;margin-top:10px;" id="loadVatsimPlanBtn">LOAD VATSIM FLIGHT PLAN</button>
-                        <p class="empty" style="margin-top:12px;">LOGON validates the relay path. Use POLL INBOX to fetch Hoppie messages.</p>
                         <div class="data-list" style="margin-top:14px;">
                             <div class="data-row"><span>DEP</span><strong id="fpDep">${escapeHtml(context.dep)}</strong></div>
                             <div class="data-row"><span>ARR</span><strong id="fpArr">${escapeHtml(context.arr)}</strong></div>
                             <div class="data-row"><span>FL</span><strong id="fpLevel">${escapeHtml(context.level)}</strong></div>
                         </div>
+                        <div class="message-log" id="telexLog" style="margin-top:14px;min-height:140px;">HISPAFLY TELEX READY
+LOGON REQUIRED</div>
                     </section>
-                    <section class="card">
-                        <h2>Message Station</h2>
-                        <div class="field">
-                            <label for="telexTo">To</label>
-                            <input id="telexTo" autocomplete="off" placeholder="Station or callsign">
-                        </div>
-                        <div class="field">
-                            <label for="telexMessage">Message</label>
-                            <textarea id="telexMessage" placeholder="TYPE TELEX MESSAGE">${escapeHtml(context.route ? `REQUEST CLEARANCE ${context.dep}-${context.arr} ROUTE ${context.route}` : "")}</textarea>
-                        </div>
-                        <button class="primary-btn" id="telexSendBtn">SEND TELEX</button>
-                        <div class="message-log" id="telexLog" style="margin-top:14px;min-height:210px;">HISPAFLY TELEX READY
-SERVER RELAY REQUIRED BEFORE LIVE HOPPIE SEND/RECEIVE</div>
-                    </section>
-                    <section class="card">
-                        <h2>Templates</h2>
-                        <div class="template-grid">
-                            <button class="template-btn" data-template="REQUEST IFR CLEARANCE ${escapeHtml(context.dep)} TO ${escapeHtml(context.arr)}">REQUEST IFR CLEARANCE</button>
-                            <button class="template-btn" data-template="REQUEST CLIMB FL">REQUEST CLIMB</button>
-                            <button class="template-btn" data-template="REQUEST DESCENT FL">REQUEST DESCENT</button>
-                            <button class="template-btn" data-template="REQUEST DIRECT ">REQUEST DIRECT</button>
-                            <button class="template-btn" data-template="WILCO">WILCO</button>
-                            <button class="template-btn" data-template="UNABLE">UNABLE</button>
-                            <button class="template-btn" data-template="STANDBY">STANDBY</button>
-                        </div>
-                        <div class="field" style="margin-top:14px;">
-                            <label for="telexRoute">Flight Plan Route</label>
-                            <textarea id="telexRoute" placeholder="VATSIM route">${escapeHtml(context.route)}</textarea>
-                        </div>
-                    </section>
+                    <div id="telexWorkbench"></div>
                 </div>
             `;
 
             document.getElementById("telexLogonBtn").addEventListener("click", () => {
                 hoppieRequest("logon");
             });
-            document.getElementById("telexSendBtn").addEventListener("click", () => {
-                hoppieRequest("send");
-            });
+        }
+
+        function renderTelexWorkbench(context) {
+            document.getElementById("telexWorkbench").innerHTML = `
+                <div class="telex-workbench">
+                    <section class="card">
+                        <h2>Pre Departure Clearance</h2>
+                        <div class="field">
+                            <label for="dclTo">Station</label>
+                            <input id="dclTo" autocomplete="off" placeholder="ATC station or SERVER" value="SERVER">
+                        </div>
+                        <div class="field">
+                            <label for="telexRoute">Flight Plan Route</label>
+                            <textarea id="telexRoute" placeholder="VATSIM route">${escapeHtml(context.route)}</textarea>
+                        </div>
+                        <button class="logout-btn" style="width:100%;margin-bottom:10px;" id="loadVatsimPlanBtn">LOAD VATSIM FLIGHT PLAN</button>
+                        <button class="primary-btn" id="sendDclBtn">REQUEST DCL</button>
+                    </section>
+                    <section class="card">
+                        <h2>Notification</h2>
+                        <div class="field">
+                            <label for="notifyTo">Station</label>
+                            <input id="notifyTo" autocomplete="off" placeholder="ATC station or callsign">
+                        </div>
+                        <div class="field">
+                            <label for="notifyType">Action</label>
+                            <select id="notifyType">
+                                <option value="REQUEST CLIMB">REQUEST CLIMB</option>
+                                <option value="REQUEST DESCENT">REQUEST DESCENT</option>
+                                <option value="REQUEST DIRECT">REQUEST DIRECT</option>
+                                <option value="WILCO">WILCO</option>
+                                <option value="UNABLE">UNABLE</option>
+                                <option value="STANDBY">STANDBY</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="notifyValue">Value</label>
+                            <input id="notifyValue" autocomplete="off" placeholder="FL380 / FIX / message text">
+                        </div>
+                        <button class="primary-btn" id="sendNotificationBtn">SEND NOTIFICATION</button>
+                        <button class="logout-btn" style="width:100%;margin-top:10px;" id="telexPollBtn">CHECK INBOX</button>
+                    </section>
+                </div>
+            `;
+            document.getElementById("sendDclBtn").addEventListener("click", sendDclRequest);
+            document.getElementById("sendNotificationBtn").addEventListener("click", sendNotification);
             document.getElementById("telexPollBtn").addEventListener("click", () => hoppieRequest("poll"));
-            document.querySelectorAll("[data-template]").forEach((button) => {
-                button.addEventListener("click", () => {
-                    document.getElementById("telexMessage").value = button.dataset.template;
-                });
-            });
             document.getElementById("loadVatsimPlanBtn").addEventListener("click", loadVatsimFlightPlan);
         }
 
-        async function hoppieRequest(action) {
+        async function sendDclRequest() {
+            const callsign = document.getElementById("telexCallsign").value.trim().toUpperCase();
+            const route = document.getElementById("telexRoute").value.trim();
+            const packet = `REQUEST DCL ${callsign} ${document.getElementById("fpDep").textContent}-${document.getElementById("fpArr").textContent} ${route ? `ROUTE ${route}` : ""}`.trim();
+            await hoppieRequest("send", {
+                to: document.getElementById("dclTo").value.trim().toUpperCase() || "SERVER",
+                packet,
+                type: "telex"
+            });
+        }
+
+        async function sendNotification() {
+            const action = document.getElementById("notifyType").value;
+            const value = document.getElementById("notifyValue").value.trim().toUpperCase();
+            await hoppieRequest("send", {
+                to: document.getElementById("notifyTo").value.trim().toUpperCase() || "SERVER",
+                packet: `${action}${value ? ` ${value}` : ""}`,
+                type: "cpdlc"
+            });
+        }
+
+        async function hoppieRequest(action, overrides = {}) {
             const callsign = document.getElementById("telexCallsign").value.trim().toUpperCase();
             const logon = document.getElementById("telexCode").value.trim();
-            const to = document.getElementById("telexTo").value.trim().toUpperCase() || "SERVER";
-            const packet = document.getElementById("telexMessage").value.trim();
+            const to = overrides.to || "SERVER";
+            const packet = overrides.packet || "";
             const log = document.getElementById("telexLog");
             const status = document.getElementById("telexStatus");
 
@@ -2162,13 +2218,18 @@ SERVER RELAY REQUIRED BEFORE LIVE HOPPIE SEND/RECEIVE</div>
                         from: callsign,
                         to,
                         packet,
-                        type: action === "send" ? "telex" : undefined
+                        type: overrides.type || (action === "send" ? "telex" : undefined)
                     })
                 });
                 const json = await res.json();
                 if (!res.ok || json.error) throw new Error(json.message || json.error || `HTTP ${res.status}`);
                 status.textContent = json.raw?.trim()?.toUpperCase() === "OK" || json.ok ? "CONNECTED" : "RECEIVED";
                 log.textContent += `\nHOPPIE RAW: ${json.raw || "OK"}`;
+                if (action === "logon") {
+                    const context = buildTelexContext();
+                    context.callsign = callsign;
+                    renderTelexWorkbench(context);
+                }
                 if (Array.isArray(json.messages) && json.messages.length) {
                     json.messages.forEach((message) => {
                         log.textContent += `\nIN ${message.from || "UNKNOWN"} ${message.type || ""}\n${message.packet || message.raw}`;
@@ -2225,8 +2286,8 @@ SERVER RELAY REQUIRED BEFORE LIVE HOPPIE SEND/RECEIVE</div>
             document.getElementById("fpDep").textContent = dep;
             document.getElementById("fpArr").textContent = arr;
             document.getElementById("fpLevel").textContent = formatFlightLevel(altitude);
-            document.getElementById("telexRoute").value = route;
-            document.getElementById("telexMessage").value = `REQUEST CLEARANCE ${dep}-${arr} ROUTE ${route}`;
+            const routeBox = document.getElementById("telexRoute");
+            if (routeBox) routeBox.value = route;
         }
 
         function formatFlightLevel(value) {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>HISPAFLY EFB | Flight Status</title>
+    <title>HISPAFLY EFB | Flight Track</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
@@ -254,6 +254,44 @@
             color: var(--danger);
         }
 
+        body.embedded {
+            min-height: 100%;
+            overflow: hidden;
+        }
+
+        body.embedded::before,
+        body.embedded .status-bar,
+        body.embedded .sidebar {
+            display: none;
+        }
+
+        body.embedded .app {
+            min-height: 100vh;
+            display: block;
+            background: #05080d;
+        }
+
+        body.embedded .layout {
+            display: block;
+            min-height: 100vh;
+        }
+
+        body.embedded .main {
+            height: 100vh;
+            padding: 0;
+        }
+
+        body.embedded .header {
+            display: none;
+        }
+
+        body.embedded .map-panel {
+            height: 100vh;
+            border: 0;
+            border-radius: 0;
+            box-shadow: none;
+        }
+
         @media (max-width: 820px) {
             body {
                 overflow: auto;
@@ -301,7 +339,7 @@
             <section class="main">
                 <div class="header">
                     <div>
-                        <div class="eyebrow">Flight Status</div>
+                        <div class="eyebrow">Flight Track</div>
                         <h1>Track Map</h1>
                         <p class="muted" id="statusText">Select a PIREP to draw recorded position reports.</p>
                     </div>
@@ -325,6 +363,9 @@
     <script>
         const API_ROOT = "https://vamsys.io/api/v3/pilot";
         const accessToken = localStorage.getItem("vamsys_token");
+        const params = new URLSearchParams(window.location.search);
+        const initialPirepId = params.get("pirep");
+        const embeddedMode = params.get("embedded") === "1";
         let pireps = [];
         let selectedPirepId = null;
         let map = null;
@@ -340,6 +381,7 @@
         };
 
         window.addEventListener("DOMContentLoaded", () => {
+            if (embeddedMode) document.body.classList.add("embedded");
             updateUtcTime();
             setInterval(updateUtcTime, 30000);
             document.getElementById("refreshBtn").addEventListener("click", () => {
@@ -388,6 +430,11 @@
                 document.querySelectorAll("[data-pirep-id]").forEach((button) => {
                     button.addEventListener("click", () => loadTrack(button.dataset.pirepId));
                 });
+                if (initialPirepId) {
+                    const match = pireps.find((pirep) => String(pirep.id) === String(initialPirepId));
+                    if (match) loadTrack(initialPirepId);
+                    else loadTrack(initialPirepId);
+                }
             } catch (err) {
                 box.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
             }
@@ -483,8 +530,7 @@
             const id = data?.[`${side}_id`];
             const airport = lookupAirport(id);
             if (airport) {
-                const code = airport.icao || airport.iata || `Airport #${airport.id}`;
-                return airport.name ? `${code} - ${airport.name}` : code;
+                return airport.icao || airport.iata || `Airport #${airport.id}`;
             }
             return id ? `Airport #${id}` : "N/A";
         }
