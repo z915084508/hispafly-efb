@@ -72,9 +72,7 @@ async function loadLiveFlightMap(silent = false) {
     }
 
     try {
-        const res = await fetch("/api/flight-map", {
-            headers: accessToken ? { "Authorization": `Bearer ${accessToken}` } : {}
-        });
+        const res = await fetch("/api/flight-map");
         const json = await res.json();
         if (!res.ok || json.error) throw new Error(json.message || json.error || `Flight map HTTP ${res.status}`);
 

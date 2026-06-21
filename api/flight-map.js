@@ -12,7 +12,7 @@ export default async function handler(req, res) {
 
   try {
     const includePosreps = String(req.query?.include_posreps || "false").toLowerCase() === "true";
-    const token = await getOperationsToken(req.headers.authorization || "");
+    const token = await getOperationsToken();
     const url = new URL(VAMSYS_FLIGHT_MAP_URL);
     if (includePosreps) url.searchParams.set("include_posreps", "true");
 
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
   }
 }
 
-async function getOperationsToken(authHeader) {
+async function getOperationsToken() {
   const envId = process.env.VAMSYS_MAP_CLIENT_ID;
   const envSecret = process.env.VAMSYS_MAP_CLIENT_SECRET;
 
@@ -82,7 +82,5 @@ async function getOperationsToken(authHeader) {
     return cachedToken;
   }
 
-  const bearer = String(authHeader || "").match(/^Bearer\s+(.+)$/i)?.[1];
-  if (bearer) return bearer;
   throw new Error("Missing VAMSYS_MAP_CLIENT_ID / VAMSYS_MAP_CLIENT_SECRET environment variables.");
 }
