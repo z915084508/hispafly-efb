@@ -871,7 +871,7 @@
                         <div class="card">
                             <h2>Activities Permission Required</h2>
                             <p class="error">${escapeHtml(err.message)}</p>
-                            <p style="margin-top:12px;">Enable the Activities read scope for this vAMSYS client, then log out and sign in again so the token includes the new permission.</p>
+                            <p style="margin-top:12px;">The vAMSYS client can have Activities enabled, but the current browser token may still be old. Use LOG OUT, then sign in again so vAMSYS issues a fresh token with activities:read.</p>
                         </div>
                     `;
                 } else {
@@ -1116,7 +1116,7 @@
                     <section class="card">
                         <h2>OFP Data</h2>
                         <div id="simbriefDetail">
-                            <p class="empty">Select a booking to load SimBrief OFP.</p>
+                            <p class="empty">Select a booking to open the full OFP page.</p>
                         </div>
                     </section>
                 </div>
@@ -1200,16 +1200,7 @@
         }
 
         async function showSimbriefOfp(id) {
-            const box = document.getElementById("simbriefDetail");
-            if (!box) return;
-            box.innerHTML = `<p class="empty">Loading SimBrief OFP ${escapeHtml(id)}...</p>`;
-            try {
-                const json = await fetchPilotJson(`/bookings/${id}/simbrief`);
-                box.innerHTML = renderSimbriefPanel(id, json.data || json);
-            } catch (err) {
-                box.innerHTML = renderSimbriefPanel(id, null, err.message);
-            }
-            document.getElementById("attachSimbriefBtn")?.addEventListener("click", () => attachSimbriefOfp(id));
+            window.location.href = `ofp.html?booking=${encodeURIComponent(id)}`;
         }
 
         function renderObjectDetails(data) {
@@ -1238,7 +1229,7 @@
                 ["Departure Time", data.departure_time],
                 ["Arrival Time", data.arrival_time],
                 ["Aircraft", formatAircraft(data)],
-                ["Route", data.user_route],
+                ["Route", formatRoute(data)],
                 ["Altitude", data.altitude],
                 ["Distance", data.distance],
                 ["Flight Time", data.flight_time],
@@ -1400,6 +1391,15 @@
             return data.aircraft_id ? `Aircraft #${data.aircraft_id}` : "N/A";
         }
 
+        function formatRoute(data) {
+            const route = lookupRoute(data.route_id);
+            if (route) {
+                const routeLine = route.routing ? ` | ${route.routing}` : "";
+                return `${route.departure} - ${route.arrival}${routeLine}`;
+            }
+            return data.user_route || (data.route_id ? `Route #${data.route_id}` : "N/A");
+        }
+
         function lookupAirport(id) {
             if (id === undefined || id === null || id === "") return null;
             return window.HPF_REFERENCE_DATA?.airports?.[String(id)] || null;
@@ -1408,6 +1408,11 @@
         function lookupAircraft(id) {
             if (id === undefined || id === null || id === "") return null;
             return window.HPF_REFERENCE_DATA?.aircraft?.[String(id)] || null;
+        }
+
+        function lookupRoute(id) {
+            if (id === undefined || id === null || id === "") return null;
+            return window.HPF_REFERENCE_DATA?.routes?.[String(id)] || null;
         }
 
         function formatLabel(key) {

@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>HISPAFLY EFB | OFP</title>
+    <style>
+        :root {
+            --red: #d71920;
+            --yellow: #ffc400;
+            --line: rgba(255,255,255,0.14);
+            --muted: rgba(255,255,255,0.66);
+            --danger: #ff6b6b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            overflow: hidden;
+            background: #05080d;
+            color: #fff;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background:
+                linear-gradient(90deg, rgba(1,3,7,0.96) 0%, rgba(1,3,7,0.86) 35%, rgba(1,3,7,0.54) 100%),
+                url("assets/login-tablet-bg.jpg");
+            background-size: cover;
+            background-position: center;
+        }
+
+        .app {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: grid;
+            grid-template-rows: 30px 1fr;
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 18px;
+            background: rgba(0,0,0,0.56);
+            border-bottom: 1px solid rgba(255,255,255,0.10);
+            color: rgba(255,255,255,0.78);
+            font-size: 11px;
+        }
+
+        .status-right,
+        .signal {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .signal {
+            align-items: end;
+            gap: 2px;
+            height: 12px;
+        }
+
+        .signal span {
+            width: 3px;
+            border-radius: 2px;
+            background: rgba(255,255,255,0.82);
+        }
+
+        .signal span:nth-child(1) { height: 4px; }
+        .signal span:nth-child(2) { height: 7px; }
+        .signal span:nth-child(3) { height: 10px; }
+        .signal span:nth-child(4) { height: 12px; background: rgba(255,255,255,0.38); }
+
+        .layout {
+            min-height: calc(100vh - 30px);
+            display: grid;
+            grid-template-columns: 280px minmax(0, 1fr);
+        }
+
+        .sidebar {
+            padding: 26px 18px;
+            border-right: 1px solid var(--line);
+            background: rgba(1,3,7,0.82);
+            backdrop-filter: blur(12px);
+        }
+
+        .logo {
+            width: 220px;
+            display: block;
+            margin-bottom: 26px;
+        }
+
+        .back,
+        .attach {
+            width: 100%;
+            min-height: 42px;
+            border: 1px solid rgba(255,255,255,0.16);
+            border-radius: 999px;
+            color: #fff;
+            text-decoration: none;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.06);
+            cursor: pointer;
+        }
+
+        .attach {
+            border: 0;
+            background: linear-gradient(90deg, var(--red), #ef3c18 48%, var(--yellow));
+            margin-top: 10px;
+        }
+
+        .field {
+            display: grid;
+            gap: 7px;
+            margin-top: 18px;
+        }
+
+        .field label {
+            color: rgba(255,255,255,0.78);
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        input {
+            width: 100%;
+            border: 1px solid rgba(255,255,255,0.16);
+            border-radius: 12px;
+            background: rgba(0,0,0,0.28);
+            color: #fff;
+            padding: 11px 12px;
+            font: inherit;
+        }
+
+        .main {
+            min-width: 0;
+            height: calc(100vh - 30px);
+            padding: 24px;
+            overflow: hidden;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: end;
+            gap: 18px;
+            margin-bottom: 16px;
+        }
+
+        .eyebrow {
+            color: var(--yellow);
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        h1 {
+            font-size: clamp(30px, 3vw, 44px);
+            line-height: 1;
+        }
+
+        .muted {
+            color: var(--muted);
+            font-size: 13px;
+            margin-top: 8px;
+        }
+
+        .viewer {
+            height: calc(100vh - 142px);
+            border: 1px solid var(--line);
+            border-radius: 22px;
+            background: rgba(4,7,12,0.62);
+            box-shadow: 0 24px 80px rgba(0,0,0,0.38);
+            overflow: auto;
+            padding: 18px;
+            backdrop-filter: blur(14px);
+        }
+
+        .pdf-frame {
+            width: 100%;
+            height: 100%;
+            min-height: calc(100vh - 180px);
+            border: 0;
+            border-radius: 14px;
+            background: #fff;
+        }
+
+        .ofp-sheet {
+            max-width: 1040px;
+            min-height: 100%;
+            margin: 0 auto;
+            border-radius: 12px;
+            padding: 28px;
+            background: #f4f1e8;
+            color: #111;
+            font-family: "Courier New", monospace;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12);
+        }
+
+        .ofp-title {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            border-bottom: 3px solid #111;
+            padding-bottom: 12px;
+            margin-bottom: 18px;
+        }
+
+        .ofp-title h2 {
+            font-size: 30px;
+        }
+
+        .ofp-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .ofp-box {
+            border: 1px solid #222;
+            padding: 9px;
+            min-height: 62px;
+        }
+
+        .ofp-box span {
+            display: block;
+            color: #555;
+            font-size: 10px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .ofp-box strong {
+            display: block;
+            color: #111;
+            font-size: 16px;
+        }
+
+        .ofp-section {
+            border-top: 1px solid #222;
+            padding-top: 13px;
+            margin-top: 13px;
+        }
+
+        .ofp-section h3 {
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .ofp-pre {
+            white-space: pre-wrap;
+            color: #111;
+            line-height: 1.45;
+            font-size: 13px;
+        }
+
+        .error {
+            color: var(--danger);
+        }
+
+        @media (max-width: 820px) {
+            body {
+                overflow: auto;
+            }
+
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .main {
+                height: auto;
+                min-height: 70svh;
+            }
+
+            .viewer {
+                height: auto;
+                min-height: 70svh;
+            }
+
+            .ofp-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="app">
+        <div class="status-bar" aria-hidden="true">
+            <span id="utcTime">--:-- UTC</span>
+            <span>HISPAFLY EFB</span>
+            <span class="status-right">
+                <span class="signal"><span></span><span></span><span></span><span></span></span>
+                <span>100%</span>
+            </span>
+        </div>
+
+        <div class="layout">
+            <aside class="sidebar">
+                <img class="logo" src="assets/hispafly-logo-white.png" alt="HISPAFLY">
+                <a class="back" href="dashboard.html">BACK TO DASHBOARD</a>
+                <div class="field">
+                    <label for="dispatchIdInput">SimBrief dispatch_id / request_id / static_id</label>
+                    <input id="dispatchIdInput" autocomplete="off" placeholder="Paste SimBrief dispatch ID">
+                </div>
+                <button class="attach" id="attachBtn">ATTACH OFP</button>
+                <p class="muted">If vAMSYS returns pdf_url, this page displays the PDF directly.</p>
+            </aside>
+
+            <section class="main">
+                <div class="header">
+                    <div>
+                        <div class="eyebrow">OFP</div>
+                        <h1 id="pageTitle">SimBrief OFP</h1>
+                        <p class="muted" id="pageSubtitle">Loading operational flight plan...</p>
+                    </div>
+                </div>
+                <div class="viewer" id="viewer">
+                    <p class="muted">Loading OFP...</p>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="assets/reference-data.js"></script>
+    <script>
+        const API_ROOT = "https://vamsys.io/api/v3/pilot";
+        const accessToken = localStorage.getItem("vamsys_token");
+        const bookingId = new URLSearchParams(window.location.search).get("booking");
+
+        if (!accessToken) window.location.href = "index.html";
+        if (!bookingId) window.location.href = "dashboard.html";
+
+        const authHeader = {
+            "Authorization": `Bearer ${accessToken}`,
+            "Accept": "application/json"
+        };
+
+        window.addEventListener("DOMContentLoaded", () => {
+            updateUtcTime();
+            setInterval(updateUtcTime, 30000);
+            document.getElementById("attachBtn").addEventListener("click", attachSimbrief);
+            loadOfp();
+        });
+
+        function updateUtcTime() {
+            const now = new Date();
+            document.getElementById("utcTime").textContent =
+                `${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")} UTC`;
+        }
+
+        async function fetchPilotJson(path, params = {}, options = {}) {
+            const url = new URL(`${API_ROOT}${path}`);
+            Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+            const res = await fetch(url, {
+                method: options.method || "GET",
+                headers: {
+                    ...authHeader,
+                    ...(options.body ? { "Content-Type": "application/json" } : {})
+                },
+                body: options.body ? JSON.stringify(options.body) : undefined
+            });
+            const text = await res.text();
+            const json = text ? JSON.parse(text) : { data: null };
+            if (!res.ok) {
+                const msg = json.message || json.error || JSON.stringify(json).slice(0, 180);
+                throw new Error(`VAMSYS ${path} failed (HTTP ${res.status}): ${msg}`);
+            }
+            return json;
+        }
+
+        async function loadOfp() {
+            const viewer = document.getElementById("viewer");
+            viewer.innerHTML = `<p class="muted">Loading OFP for booking ${escapeHtml(bookingId)}...</p>`;
+            try {
+                const [bookingResult, ofpResult] = await Promise.allSettled([
+                    fetchPilotJson(`/bookings/${bookingId}`),
+                    fetchPilotJson(`/bookings/${bookingId}/simbrief`)
+                ]);
+                const booking = bookingResult.status === "fulfilled" ? (bookingResult.value.data || {}) : {};
+                if (booking.flight_number || booking.callsign) {
+                    document.getElementById("pageTitle").textContent = `${formatValue(booking.flight_number, "Flight")} ${formatValue(booking.callsign, "")}`.trim();
+                    document.getElementById("pageSubtitle").textContent = `${formatRoute(booking)} | ${formatAircraft(booking)}`;
+                }
+                if (ofpResult.status === "fulfilled") {
+                    renderOfp(ofpResult.value.data || ofpResult.value, booking);
+                } else {
+                    viewer.innerHTML = `<p class="error">${escapeHtml(ofpResult.reason.message)}</p>`;
+                }
+            } catch (err) {
+                viewer.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+            }
+        }
+
+        async function attachSimbrief() {
+            const dispatchId = document.getElementById("dispatchIdInput").value.trim();
+            const viewer = document.getElementById("viewer");
+            if (!dispatchId) {
+                viewer.innerHTML = `<p class="error">dispatch_id is required.</p>`;
+                return;
+            }
+            viewer.innerHTML = `<p class="muted">Attaching SimBrief OFP...</p>`;
+            try {
+                const json = await fetchPilotJson(`/bookings/${bookingId}/simbrief`, {}, {
+                    method: "PUT",
+                    body: { dispatch_id: dispatchId }
+                });
+                renderOfp(json.data || json, {});
+            } catch (err) {
+                viewer.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+            }
+        }
+
+        function renderOfp(data, booking) {
+            const viewer = document.getElementById("viewer");
+            const pdfUrl = data?.pdf_url || data?.ofp_data?.pdf_url;
+            if (pdfUrl) {
+                viewer.innerHTML = `<iframe class="pdf-frame" src="${escapeHtml(pdfUrl)}" title="SimBrief OFP PDF"></iframe>`;
+                return;
+            }
+            viewer.innerHTML = renderLidoOfp(data, booking);
+        }
+
+        function renderLidoOfp(raw, booking = {}) {
+            const ofp = raw?.ofp_data || raw || {};
+            const atc = ofp.atc || {};
+            const general = ofp.general || {};
+            const fuel = ofp.fuel || {};
+            const times = ofp.times || {};
+            const weights = ofp.weights || {};
+            const navlog = ofp.navlog || {};
+            const routeRef = lookupRoute(booking.route_id);
+            const route = atc.route || ofp.route || navlog.route || atc.route_ifps || routeRef?.routing || booking.user_route || "N/A";
+            const callsign = atc.callsign || booking.callsign || general.flight_number || "N/A";
+            const origin = atc.fir_orig || atc.orig || general.origin || routeRef?.departure || formatAirport(booking, "departure");
+            const dest = atc.fir_dest || atc.dest || general.destination || routeRef?.arrival || formatAirport(booking, "arrival");
+            const altn = atc.altn || general.alternate || ofp.alternate || "N/A";
+
+            return `
+                <div class="ofp-sheet">
+                    <div class="ofp-title">
+                        <div>
+                            <h2>HISPAFLY OFP</h2>
+                            <p>OPERATIONAL FLIGHT PLAN / LIDO STYLE VIEW</p>
+                        </div>
+                        <strong>${escapeHtml(callsign)}</strong>
+                    </div>
+                    <div class="ofp-grid">
+                        ${ofpBox("ORIGIN", origin)}
+                        ${ofpBox("DEST", dest)}
+                        ${ofpBox("ALTN", altn)}
+                        ${ofpBox("AIRCRAFT", formatAircraft(booking) || atc.aircraft || general.aircraft)}
+                        ${ofpBox("ROUTE ID", booking.route_id || routeRef?.id)}
+                        ${ofpBox("DIST", routeRef?.distance || booking.distance)}
+                        ${ofpBox("EET", times.est_time_enroute || routeRef?.length)}
+                        ${ofpBox("ZFW", weights.est_zfw || weights.max_zfw)}
+                    </div>
+                    <div class="ofp-section">
+                        <h3>ATC FLIGHT PLAN</h3>
+                        <div class="ofp-pre">${escapeHtml(atc.section18 || atc.raw || "N/A")}</div>
+                    </div>
+                    <div class="ofp-section">
+                        <h3>ROUTE</h3>
+                        <div class="ofp-pre">${escapeHtml(route)}</div>
+                    </div>
+                    <div class="ofp-section">
+                        <h3>FUEL / TIMES</h3>
+                        <div class="ofp-pre">${escapeHtml(JSON.stringify({ fuel, times }, null, 2))}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function ofpBox(label, value) {
+            return `<div class="ofp-box"><span>${escapeHtml(label)}</span><strong>${escapeHtml(formatValue(value))}</strong></div>`;
+        }
+
+        function formatRoute(data) {
+            const route = lookupRoute(data.route_id);
+            if (route) return `${route.departure} - ${route.arrival}`;
+            return `${formatAirport(data, "departure")} - ${formatAirport(data, "arrival")}`;
+        }
+
+        function formatAirport(data, side) {
+            const direct = data?.[`${side}_icao`] || data?.[`${side}_iata`] || data?.[`${side}_code`];
+            if (direct) return direct;
+            const route = lookupRoute(data.route_id);
+            if (route) return side === "departure" ? route.departure : route.arrival;
+            const id = data?.[`${side}_id`];
+            const airport = lookupAirport(id);
+            if (airport) {
+                const code = airport.icao || airport.iata || `Airport #${airport.id}`;
+                return airport.name ? `${code} - ${airport.name}` : code;
+            }
+            return id ? `Airport #${id}` : "N/A";
+        }
+
+        function formatAircraft(data) {
+            const ref = lookupAircraft(data.aircraft_id);
+            if (ref) return [ref.registration, ref.name].filter(Boolean).join(" - ");
+            return data.aircraft_id ? `Aircraft #${data.aircraft_id}` : "N/A";
+        }
+
+        function lookupAirport(id) {
+            if (id === undefined || id === null || id === "") return null;
+            return window.HPF_REFERENCE_DATA?.airports?.[String(id)] || null;
+        }
+
+        function lookupAircraft(id) {
+            if (id === undefined || id === null || id === "") return null;
+            return window.HPF_REFERENCE_DATA?.aircraft?.[String(id)] || null;
+        }
+
+        function lookupRoute(id) {
+            if (id === undefined || id === null || id === "") return null;
+            return window.HPF_REFERENCE_DATA?.routes?.[String(id)] || null;
+        }
+
+        function formatValue(value, fallback = "N/A") {
+            return value === undefined || value === null || value === "" ? fallback : value;
+        }
+
+        function escapeHtml(value) {
+            return String(formatValue(value, ""))
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
