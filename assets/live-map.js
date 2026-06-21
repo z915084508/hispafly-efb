@@ -269,6 +269,7 @@ function renderLiveMapData() {
 }
 
 function renderLiveMapMarkers(flights) {
+    renderVectorLiveMap(flights);
     if (!liveMapInstance || !liveMapLayer) return;
     liveMapLayer.clearLayers();
 
@@ -303,6 +304,169 @@ function renderLiveMapMarkers(flights) {
 
     renderLiveMapEmptyState(flights.length);
     window.setTimeout(() => liveMapInstance.invalidateSize(), 80);
+}
+
+function renderVectorLiveMap(flights) {
+    const canvas = document.getElementById("liveMapCanvas");
+    if (!canvas) return;
+
+    const existing = document.getElementById("liveMapVector");
+    if (existing) existing.remove();
+
+    if (!flights.length) return;
+
+    const points = [];
+    flights.forEach((flight) => {
+        if (flight.position) points.push({ ...flight.position, label: flight.callsign, type: "aircraft" });
+        flight.route.forEach((point, index) => {
+            points.push({
+                ...point,
+                label: index === 0 ? flight.departure : flight.arrival,
+                type: index === 0 ? "dep" : "arr"
+            });
+        });
+    });
+
+    const bounds = getVectorBounds(points);
+    const project = (point) => projectVectorPoint(point, bounds);
+    const gridLines = renderVectorGrid(bounds, project);
+    const routes = flights.map((flight) => renderVectorRoute(flight, project)).join("");
+    const aircraft = flights.map((flight) => renderVectorAircraft(flight, project)).join("");
+    const labels = flights.map((flight) => renderVectorLabels(flight, project)).join("");
+
+    const vector = document.createElement("div");
+    vector.id = "liveMapVector";
+    vector.className = "live-map-vector";
+    vector.innerHTML = `
+        <svg viewBox="0 0 1000 430" role="img" aria-label="Live flight vector map">
+            <defs>
+                <radialGradient id="liveMapGlow" cx="50%" cy="48%" r="58%">
+                    <stop offset="0%" stop-color="rgba(0,180,216,0.20)" />
+                    <stop offset="100%" stop-color="rgba(0,0,0,0)" />
+                </radialGradient>
+                <filter id="planeShadow" x="-80%" y="-80%" width="260%" height="260%">
+                    <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="rgba(0,0,0,0.5)" />
+                </filter>
+            </defs>
+            <rect width="1000" height="430" rx="14" fill="rgba(3,14,24,0.82)" />
+            <rect width="1000" height="430" rx="14" fill="url(#liveMapGlow)" />
+            ${gridLines}
+            ${routes}
+            ${labels}
+            ${aircraft}
+        </svg>
+    `;
+    canvas.appendChild(vector);
+}
+
+function getVectorBounds(points) {
+    const valid = points.filter((point) => point && Number.isFinite(point.lat) && Number.isFinite(point.lon));
+    const fallback = { minLat: 35, maxLat: 43, minLon: -10, maxLon: 5 };
+    if (!valid.length) return fallback;
+
+    let minLat = Math.min(...valid.map((point) => point.lat));
+    let maxLat = Math.max(...valid.map((point) => point.lat));
+    let minLon = Math.min(...valid.map((point) => point.lon));
+    let maxLon = Math.max(...valid.map((point) => point.lon));
+    const latPad = Math.max((maxLat - minLat) * 0.28, 0.65);
+    const lonPad = Math.max((maxLon - minLon) * 0.28, 0.65);
+
+    minLat = Math.max(-85, minLat - latPad);
+    maxLat = Math.min(85, maxLat + latPad);
+    minLon = Math.max(-180, minLon - lonPad);
+    maxLon = Math.min(180, maxLon + lonPad);
+
+    if (minLat === maxLat) {
+        minLat -= 0.65;
+        maxLat += 0.65;
+    }
+    if (minLon === maxLon) {
+        minLon -= 0.65;
+        maxLon += 0.65;
+    }
+
+    return { minLat, maxLat, minLon, maxLon };
+}
+
+function projectVectorPoint(point, bounds) {
+    const x = 60 + ((point.lon - bounds.minLon) / (bounds.maxLon - bounds.minLon)) * 880;
+    const y = 365 - ((point.lat - bounds.minLat) / (bounds.maxLat - bounds.minLat)) * 300;
+    return {
+        x: Number.isFinite(x) ? x : 500,
+        y: Number.isFinite(y) ? y : 215
+    };
+}
+
+function renderVectorGrid(bounds, project) {
+    const latStep = Math.max(0.25, (bounds.maxLat - bounds.minLat) / 5);
+    const lonStep = Math.max(0.25, (bounds.maxLon - bounds.minLon) / 5);
+    const lines = [];
+
+    for (let i = 0; i <= 5; i += 1) {
+        const lat = bounds.minLat + latStep * i;
+        const a = project({ lat, lon: bounds.minLon });
+        const b = project({ lat, lon: bounds.maxLon });
+        lines.push(`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="rgba(255,255,255,0.08)" stroke-width="1" />`);
+    }
+
+    for (let i = 0; i <= 5; i += 1) {
+        const lon = bounds.minLon + lonStep * i;
+        const a = project({ lat: bounds.minLat, lon });
+        const b = project({ lat: bounds.maxLat, lon });
+        lines.push(`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="rgba(255,255,255,0.08)" stroke-width="1" />`);
+    }
+
+    return `<g>${lines.join("")}</g>`;
+}
+
+function renderVectorRoute(flight, project) {
+    if (!flight.route.length) return "";
+    const routePoints = [...flight.route];
+    if (flight.position) {
+        routePoints.splice(1, 0, flight.position);
+    }
+    const points = routePoints.map((point) => {
+        const projected = project(point);
+        return `${projected.x},${projected.y}`;
+    }).join(" ");
+
+    return `
+        <polyline points="${points}" fill="none" stroke="rgba(16,185,129,0.84)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+        <polyline points="${points}" fill="none" stroke="rgba(255,255,255,0.24)" stroke-width="1.5" stroke-dasharray="8 10" stroke-linecap="round" />
+    `;
+}
+
+function renderVectorAircraft(flight, project) {
+    if (!flight.position) return "";
+    const point = project(flight.position);
+    const heading = Number(flight.heading || 0);
+    return `
+        <g transform="translate(${point.x} ${point.y}) rotate(${heading})" filter="url(#planeShadow)">
+            <circle r="18" fill="rgba(255,196,0,0.22)" stroke="rgba(255,196,0,0.8)" stroke-width="2" />
+            <path d="M 0 -18 L 10 12 L 0 7 L -10 12 Z" fill="#ffc400" stroke="#05080d" stroke-width="1.5" />
+        </g>
+        <g transform="translate(${point.x + 24} ${point.y - 28})">
+            <rect x="0" y="0" width="150" height="44" rx="10" fill="rgba(4,7,12,0.82)" stroke="rgba(255,255,255,0.16)" />
+            <text x="12" y="18" fill="#fff" font-size="14" font-weight="800">${escapeSvg(flight.callsign)}</text>
+            <text x="12" y="34" fill="rgba(255,255,255,0.66)" font-size="11">${escapeSvg(formatValue(flight.phase, "ACTIVE"))} / ${escapeSvg(formatValue(flight.altitude))} ft</text>
+        </g>
+    `;
+}
+
+function renderVectorLabels(flight, project) {
+    const labels = [];
+    flight.route.forEach((point, index) => {
+        const projected = project(point);
+        const label = index === 0 ? flight.departure : flight.arrival;
+        const color = index === 0 ? "#72f0a3" : "#ff6b6b";
+        labels.push(`
+            <g transform="translate(${projected.x} ${projected.y})">
+                <circle r="6" fill="${color}" stroke="#05080d" stroke-width="2" />
+                <text x="10" y="-9" fill="#fff" font-size="12" font-weight="800">${escapeSvg(formatValue(label))}</text>
+            </g>
+        `);
+    });
+    return labels.join("");
 }
 
 function renderLiveMapEmptyState(mappedCount) {
@@ -390,4 +554,12 @@ function formatLiveMapTime(value) {
     const mm = String(date.getUTCMinutes()).padStart(2, "0");
     const ss = String(date.getUTCSeconds()).padStart(2, "0");
     return `${hh}:${mm}:${ss} UTC`;
+}
+
+function escapeSvg(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
 }
