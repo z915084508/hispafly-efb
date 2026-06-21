@@ -59,6 +59,9 @@
             if (currentView === "cdmAirport" && view !== "cdmAirport" && typeof stopCdmAutoRefresh === "function") {
                 stopCdmAutoRefresh();
             }
+            if (currentView === "liveMap" && view !== "liveMap" && typeof stopLiveMapAutoRefresh === "function") {
+                stopLiveMapAutoRefresh();
+            }
             currentView = view;
             document.querySelectorAll(".menu-btn, .submenu-btn").forEach((button) => {
                 button.classList.toggle("active", button.dataset.view === view);
@@ -79,7 +82,8 @@
                 flightCenter: ["Flights", "Flight Center", "Current bookings and dispatch documents."],
                 weather: ["Weather", "WX Info", "Request weather information by airport ICAO."],
                 telex: ["ACARS", "TELEX", "Hoppie ACARS style logon, inbox, and telex compose station."],
-                cdmAirport: ["Airport CDM", "CDM Airport Status", "Airport departure queue and ATFCM status."]
+                cdmAirport: ["Airport CDM", "CDM Airport Status", "Airport departure queue and ATFCM status."],
+                liveMap: ["Live Ops", "Live Flight Map", "Real-time VAMSYS active flight positions."]
             }[view];
             document.getElementById("viewEyebrow").textContent = copy[0];
             document.getElementById("viewTitle").textContent = copy[1];
@@ -110,6 +114,8 @@
                     renderTelex();
                 } else if (currentView === "cdmAirport") {
                     renderCdmAirport();
+                } else if (currentView === "liveMap") {
+                    renderLiveFlightMap();
                 }
             } catch (err) {
                 panel.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;

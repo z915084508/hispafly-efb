@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>HISPAFLY EFB | Dashboard</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="assets/dashboard.css">
 </head>
 <body>
@@ -69,6 +70,12 @@
                             <small>Airport queue</small>
                         </button>
                     </div>
+                    <div class="menu-group" data-group="liveMap">
+                        <button class="menu-btn" data-view="liveMap">
+                            <span>Live Flight Map</span>
+                            <small>VAMSYS live ops</small>
+                        </button>
+                    </div>
                 </nav>
 
                 <div class="sidebar-footer">
@@ -99,6 +106,8 @@
     <script src="assets/dashboard.js"></script>
     <script src="assets/telex.js"></script>
     <script src="assets/cdm.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="assets/live-map.js"></script>
 </body>
 </html>
 

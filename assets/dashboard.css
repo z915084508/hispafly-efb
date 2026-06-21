@@ -735,6 +735,79 @@
             overflow-wrap: anywhere;
         }
 
+        .live-map-layout {
+            display: grid;
+            gap: 14px;
+        }
+
+        .live-map-card {
+            min-height: 560px;
+        }
+
+        .live-map-toolbar {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 12px;
+            align-items: end;
+            margin-bottom: 12px;
+        }
+
+        .live-map-stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .live-map-canvas {
+            width: 100%;
+            min-height: 430px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 16px;
+            background:
+                linear-gradient(rgba(255,255,255,0.055) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.055) 1px, transparent 1px),
+                rgba(2,5,10,0.72);
+            background-size: 54px 54px;
+        }
+
+        .leaflet-container {
+            background: #08111b;
+            color: #111;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .live-plane-marker {
+            display: grid;
+            place-items: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 999px;
+            background: rgba(255,196,0,0.22);
+            border: 1px solid rgba(255,196,0,0.76);
+            box-shadow: 0 0 18px rgba(255,196,0,0.42);
+            color: var(--yellow);
+            font-size: 17px;
+            font-weight: 900;
+        }
+
+        .live-plane-marker span {
+            display: block;
+            line-height: 1;
+        }
+
+        .live-map-list {
+            display: grid;
+            gap: 10px;
+            max-height: 360px;
+            overflow: auto;
+            padding-right: 4px;
+        }
+
+        .live-flight-unmapped {
+            opacity: 0.74;
+        }
+
         .message-log {
             min-height: 350px;
             border-radius: 16px;
@@ -972,6 +1045,8 @@
             .cdm-summary,
             .cdm-data-grid,
             .cdm-search-grid,
+            .live-map-toolbar,
+            .live-map-stats,
             .weather-form {
                 grid-template-columns: 1fr;
             }
