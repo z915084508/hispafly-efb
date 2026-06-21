@@ -174,17 +174,18 @@ function classifyVatsimGroundState(pilot, airport) {
     const flightPlan = pilot.flight_plan || {};
     const fpDeparture = String(flightPlan.departure || "").toUpperCase();
     const fpArrival = String(flightPlan.arrival || "").toUpperCase();
-    const fromAirport = fpDeparture === airport;
+    const isDepartureFromAirport = fpDeparture === airport && fpArrival && fpArrival !== airport;
     const isClearlyAirborne = (
         (Number.isFinite(groundspeed) && groundspeed >= 120) ||
         (Number.isFinite(groundspeed) && groundspeed >= 80 && Number.isFinite(altitude) && altitude >= 1500) ||
-        (!fromAirport && Number.isFinite(altitude) && altitude >= 2500)
+        (!isDepartureFromAirport && Number.isFinite(altitude) && altitude >= 2500)
     );
+    const isGroundMovement = !Number.isFinite(groundspeed) || groundspeed < 80;
 
-    if (fromAirport && !isClearlyAirborne) {
+    if (isDepartureFromAirport && isGroundMovement && !isClearlyAirborne) {
         return {
             label: "On ground",
-            detail: `ALT ${formatValue(pilot.altitude)} / GS ${formatValue(pilot.groundspeed)}`,
+            detail: `${fpDeparture}-${fpArrival} ALT ${formatValue(pilot.altitude)} / GS ${formatValue(pilot.groundspeed)}`,
             airborne: false,
             onGroundAtAirport: true
         };
@@ -200,8 +201,8 @@ function classifyVatsimGroundState(pilot, airport) {
     }
 
     return {
-        label: "Wrong airport",
-        detail: `FP DEP ${formatValue(fpDeparture, "N/A")} / GS ${formatValue(pilot.groundspeed)}`,
+        label: "Not departure",
+        detail: `FP ${formatValue(fpDeparture, "N/A")}-${formatValue(fpArrival, "N/A")} / GS ${formatValue(pilot.groundspeed)}`,
         airborne: false,
         onGroundAtAirport: false
     };
@@ -222,13 +223,13 @@ function renderCdmAirportData(airport, flights, callsignFilter = "") {
     return `
         <div class="cdm-summary">
             ${cdmStat("Airport", airport)}
-            ${cdmStat("Ground Queue", sorted.length)}
+            ${cdmStat("Departure Queue", sorted.length)}
             ${cdmStat("Active", activeCount)}
             ${cdmStat("Removed", cdmExcludedAirborne + cdmExcludedNotGround)}
             ${cdmStat(callsignFilter ? "Matches" : "Confirmed", callsignFilter ? filtered.length : confirmedCount)}
         </div>
         <div class="cdm-refresh-row">
-            <span>Auto refresh every ${Math.round(CDM_REFRESH_MS / 1000)}s | removed ${cdmExcludedAirborne} airborne and ${cdmExcludedNotGround} not on VATSIM ground at ${escapeHtml(airport)}</span>
+            <span>Auto refresh every ${Math.round(CDM_REFRESH_MS / 1000)}s | VATSIM departures only | removed ${cdmExcludedAirborne} airborne and ${cdmExcludedNotGround} not in ${escapeHtml(airport)} departure queue</span>
             <strong id="cdmRefreshStamp">Updated ${escapeHtml(formatCdmRefreshTime(cdmLastUpdated))}</strong>
         </div>
         ${callsignFilter ? `<p class="empty" style="margin-bottom:12px;">Showing callsigns matching ${escapeHtml(callsignFilter)} inside ${escapeHtml(airport)} queue.</p>` : ""}
