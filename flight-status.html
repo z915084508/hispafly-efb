@@ -321,6 +321,7 @@
         </div>
     </main>
 
+    <script src="assets/reference-data.js"></script>
     <script>
         const API_ROOT = "https://vamsys.io/api/v3/pilot";
         const accessToken = localStorage.getItem("vamsys_token");
@@ -480,7 +481,17 @@
             const direct = data?.[`${side}_icao`] || data?.[`${side}_icao_code`] || data?.[`${side}_iata`] || data?.[`${side}_code`];
             if (direct) return direct;
             const id = data?.[`${side}_id`];
+            const airport = lookupAirport(id);
+            if (airport) {
+                const code = airport.icao || airport.iata || `Airport #${airport.id}`;
+                return airport.name ? `${code} - ${airport.name}` : code;
+            }
             return id ? `Airport #${id}` : "N/A";
+        }
+
+        function lookupAirport(id) {
+            if (id === undefined || id === null || id === "") return null;
+            return window.HPF_REFERENCE_DATA?.airports?.[String(id)] || null;
         }
 
         function escapeHtml(value) {
