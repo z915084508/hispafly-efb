@@ -237,7 +237,7 @@ function formatCdmTime(value) {
     const text = String(formatValue(value, "")).trim();
     if (!text) return "N/A";
     const compact = text.replace(/[^0-9]/g, "");
-    if (/^\d{6}$/.test(compact)) return compact.slice(-4);
+    if (/^\d{6}$/.test(compact)) return compact.slice(0, 4);
     if (/^\d{4}$/.test(compact)) return compact;
     const hhmm = text.match(/(\d{2}):?(\d{2})/);
     if (hhmm) return `${hhmm[1]}${hhmm[2]}`;

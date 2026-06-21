@@ -127,7 +127,7 @@ function renderDclPage(context) {
             <div class="grid" style="gap:10px;">
                 <div class="field">
                     <label for="dclAircraftType">A/C Type</label>
-                    <input id="dclAircraftType" autocomplete="off" maxlength="8" placeholder="A21N" value="${escapeHtml(context.aircraftType)}">
+                    <input id="dclAircraftType" autocomplete="off" maxlength="8" placeholder="A21N">
                 </div>
                 <div class="field">
                     <label for="dclStand">Stand</label>
@@ -597,23 +597,8 @@ function buildTelexContext() {
         dep: booking ? shortAirport(booking, "departure") : "N/A",
         arr: booking ? shortAirport(booking, "arrival") : "N/A",
         level: booking?.altitude ? `FL${Math.round(Number(booking.altitude) / 100)}` : "N/A",
-        route: booking?.user_route || "",
-        aircraftType: getBookingAircraftType(booking)
+        route: booking?.user_route || ""
     };
-}
-
-function getBookingAircraftType(booking) {
-    if (!booking) return "";
-    const direct = booking.aircraft_type
-        || booking.aircraft_icao
-        || booking.fleet?.icao
-        || booking.fleet?.type
-        || booking.aircraft?.icao
-        || booking.aircraft?.type;
-    if (direct) return normalizeAircraftType(direct);
-    const ref = typeof lookupAircraft === "function" ? lookupAircraft(booking.aircraft_id) : null;
-    const refType = ref?.icao || ref?.type || ref?.name || ref?.registration || "";
-    return normalizeAircraftType(refType);
 }
 
 async function loadVatsimFlightPlan() {
@@ -642,22 +627,11 @@ function applyVatsimFlightPlan(plan) {
     const arr = plan.arrival || plan.arrival_airport || plan.arr || plan.arrival_icao || "N/A";
     const route = plan.route || plan.flight_route || plan.filed_route || "";
     const altitude = plan.altitude || plan.cruise_tas || plan.flight_level || "N/A";
-    const aircraftType = normalizeAircraftType(plan.aircraft_short || plan.aircraft_icao || plan.aircraft_type || plan.aircraft || plan.ac_type || "");
     document.getElementById("fpDep").textContent = dep;
     document.getElementById("fpArr").textContent = arr;
     document.getElementById("fpLevel").textContent = formatFlightLevel(altitude);
-    const dclAircraft = document.getElementById("dclAircraftType");
-    if (dclAircraft && aircraftType) dclAircraft.value = aircraftType;
     const routeBox = document.getElementById("telexRoute");
     if (routeBox) routeBox.value = route;
-}
-
-function normalizeAircraftType(value) {
-    const text = String(value || "").toUpperCase().trim();
-    const slashMatch = text.match(/([A-Z0-9]{3,4})\//);
-    if (slashMatch) return slashMatch[1];
-    const codeMatch = text.match(/\b([A-Z][A-Z0-9]{2,3})\b/);
-    return codeMatch ? codeMatch[1] : text.slice(0, 8);
 }
 
 function formatFlightLevel(value) {
