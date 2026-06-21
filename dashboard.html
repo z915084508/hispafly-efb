@@ -492,6 +492,51 @@
             white-space: pre-wrap;
         }
 
+        .notam-content {
+            margin-top: 14px;
+            min-height: 220px;
+            border-radius: 16px;
+            padding: 16px;
+            background: rgba(0,0,0,0.24);
+            border: 1px solid rgba(255,255,255,0.10);
+            color: rgba(255,255,255,0.78);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .notam-content h1,
+        .notam-content h2,
+        .notam-content h3 {
+            font-size: 17px;
+            margin: 12px 0 8px;
+            color: #fff;
+        }
+
+        .notam-content h1:first-child,
+        .notam-content h2:first-child,
+        .notam-content h3:first-child,
+        .notam-content p:first-child {
+            margin-top: 0;
+        }
+
+        .notam-content p {
+            margin: 0 0 10px;
+            color: rgba(255,255,255,0.78);
+        }
+
+        .notam-content strong {
+            color: #fff;
+        }
+
+        .notam-content ul,
+        .notam-content ol {
+            margin: 8px 0 12px 20px;
+        }
+
+        .notam-content li {
+            margin: 5px 0;
+        }
+
         .ofp-viewer {
             display: grid;
             gap: 14px;
@@ -997,13 +1042,14 @@
                 const title = notam.title || notam.subject || notam.name || `NOTAM #${formatValue(notam.id)}`;
                 const status = notam.read || notam.read_at || notam.is_read ? "Read" : "Unread";
                 const body = notam.body || notam.content || notam.message || notam.description || "No content preview";
+                const preview = htmlToText(body).slice(0, 180) || "No content preview";
                 return `
                     <button class="item item-button" data-notam-id="${escapeHtml(notam.id)}">
                         <div class="item-title">
                             <span>${escapeHtml(title)}</span>
                             <span class="pill">${escapeHtml(status)}</span>
                         </div>
-                        <p>${escapeHtml(String(body).slice(0, 180))}</p>
+                        <p>${escapeHtml(preview)}</p>
                         <div class="meta" style="margin-top:12px;">
                             <span>ID: ${escapeHtml(formatValue(notam.id))}</span>
                             <span>Issued: ${escapeHtml(formatDate(notam.created_at || notam.published_at || notam.start_at))}</span>
@@ -1051,10 +1097,38 @@
                     <div class="data-row"><span>Issued</span><strong>${escapeHtml(formatDate(notam.created_at || notam.published_at || notam.start_at))}</strong></div>
                     <div class="data-row"><span>Expires</span><strong>${escapeHtml(formatDate(notam.expires_at || notam.end_at))}</strong></div>
                 </div>
-                <div class="message-log" style="margin-top:14px;min-height:220px;">${escapeHtml(body)}</div>
+                <div class="notam-content">${sanitizeHtml(body)}</div>
                 <button class="primary-btn" style="margin-top:14px;" id="markNotamReadBtn">MARK NOTAM AS READ</button>
             `;
             document.getElementById("markNotamReadBtn").addEventListener("click", () => markNotamRead(id));
+        }
+
+        function sanitizeHtml(input) {
+            const template = document.createElement("template");
+            template.innerHTML = String(input || "");
+            const allowedTags = new Set(["P", "BR", "STRONG", "B", "EM", "I", "UL", "OL", "LI", "H1", "H2", "H3"]);
+
+            template.content.querySelectorAll("*").forEach((node) => {
+                if (!allowedTags.has(node.tagName)) {
+                    const text = document.createTextNode(node.textContent || "");
+                    node.replaceWith(text);
+                    return;
+                }
+                [...node.attributes].forEach((attr) => node.removeAttribute(attr.name));
+            });
+
+            const html = template.innerHTML.trim();
+            if (html) return html;
+            return `<p>${escapeHtml(htmlToText(input) || "No content returned.")}</p>`;
+        }
+
+        function htmlToText(input) {
+            const template = document.createElement("template");
+            template.innerHTML = String(input || "");
+            return (template.content.textContent || "")
+                .replace(/\u00a0/g, " ")
+                .replace(/\s+/g, " ")
+                .trim();
         }
 
         function findNotam(id) {
