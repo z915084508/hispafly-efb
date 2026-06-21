@@ -515,6 +515,73 @@
             font-weight: 800;
         }
 
+        .primary-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 44px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--red), #ef3c18 48%, var(--yellow));
+            color: #fff;
+            text-decoration: none;
+            font-weight: 800;
+        }
+
+        .detail-actions {
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(255,255,255,0.10);
+        }
+
+        .track-card,
+        .weather-report {
+            margin-top: 16px;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 14px;
+            background: rgba(0,0,0,0.20);
+            padding: 14px;
+        }
+
+        .track-card h3,
+        .weather-report h3 {
+            border-left: 4px solid var(--yellow);
+            padding-left: 10px;
+            margin-bottom: 12px;
+            font-size: 15px;
+        }
+
+        .track-svg {
+            display: block;
+            width: 100%;
+            height: 260px;
+            border-radius: 12px;
+            background:
+                linear-gradient(rgba(255,255,255,0.055) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.055) 1px, transparent 1px),
+                rgba(2,5,10,0.72);
+            background-size: 54px 54px;
+        }
+
+        .weather-form {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 180px;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .wx-badge {
+            display: inline-flex;
+            align-items: center;
+            min-height: 28px;
+            padding: 0 10px;
+            border-radius: 999px;
+            background: rgba(114,240,163,0.12);
+            color: var(--ok);
+            font-size: 12px;
+            font-weight: 800;
+        }
+
         .message-log {
             min-height: 350px;
             border-radius: 16px;
@@ -746,7 +813,8 @@
 
             .grid,
             .action-grid,
-            .telex {
+            .telex,
+            .weather-form {
                 grid-template-columns: 1fr;
             }
 
@@ -799,15 +867,11 @@
                             <span>Flight Center</span>
                             <small>Bookings and OFP</small>
                         </button>
-                        <div class="submenu">
-                            <button class="submenu-btn" data-view="showBooking">Show Pilot Booking</button>
-                            <button class="submenu-btn" data-view="simbriefOfp">SimBrief OFP</button>
-                        </div>
                     </div>
-                    <div class="menu-group" data-group="flightStatus">
-                        <button class="menu-btn" data-link="flight-status.html">
-                            <span>Flight Status</span>
-                            <small>Track map</small>
+                    <div class="menu-group" data-group="weather">
+                        <button class="menu-btn" data-view="weather">
+                            <span>WX Info</span>
+                            <small>METAR by ICAO</small>
                         </button>
                     </div>
                     <div class="menu-group" data-group="telex">
@@ -917,8 +981,7 @@
                 profile: ["Pilot", "Pilot Profile", "Crew identity, network IDs, rank, and flight time."],
                 pirepLogbook: ["Logbook", "PIREP Logbook", "Select a PIREP to open the full pilot report."],
                 flightCenter: ["Flights", "Flight Center", "Current bookings and dispatch documents."],
-                showBooking: ["Bookings", "Show Pilot Booking", "Select a booking to open full booking details."],
-                simbriefOfp: ["OFP", "SimBrief OFP", "Load the SimBrief OFP for a booking."],
+                weather: ["Weather", "WX Info", "Request weather information by airport ICAO."],
                 telex: ["ACARS", "TELEX", "Hoppie ACARS style logon, inbox, and telex compose station."]
             }[view];
             document.getElementById("viewEyebrow").textContent = copy[0];
@@ -943,12 +1006,8 @@
                 } else if (currentView === "flightCenter") {
                     if (!bookingsData || force) bookingsData = await loadBookings();
                     renderFlightCenter();
-                } else if (currentView === "showBooking") {
-                    if (!bookingsData || force) bookingsData = await loadBookings();
-                    renderShowBooking();
-                } else if (currentView === "simbriefOfp") {
-                    if (!bookingsData || force) bookingsData = await loadBookings();
-                    renderSimbriefOfp();
+                } else if (currentView === "weather") {
+                    renderWeather();
                 } else if (currentView === "telex") {
                     if (!bookingsData || force) bookingsData = await loadBookings();
                     renderTelex();
@@ -1220,10 +1279,6 @@
                             <label for="savedTelexCode">Hoppie LOGON Code</label>
                             <input id="savedTelexCode" type="password" autocomplete="off" placeholder="Saved locally in this browser">
                         </div>
-                        <div class="field">
-                            <label for="savedTelexCallsign">Default Callsign</label>
-                            <input id="savedTelexCallsign" autocomplete="off" placeholder="Optional, booking callsign has priority">
-                        </div>
                         <button class="primary-btn" id="saveTelexSettingsBtn">SAVE TELEX SETTINGS</button>
                         <button class="logout-btn" style="width:100%;margin-top:10px;" id="clearTelexSettingsBtn">CLEAR SETTINGS</button>
                         <p class="empty" style="margin-top:12px;">Stored locally on this browser. A secure backend vault can replace this later.</p>
@@ -1248,19 +1303,15 @@
         function loadTelexSettingsForm() {
             const settings = getTelexSettings();
             document.getElementById("savedTelexCode").value = settings.logonCode || "";
-            document.getElementById("savedTelexCallsign").value = settings.defaultCallsign || "";
             document.getElementById("saveTelexSettingsBtn").addEventListener("click", () => {
                 saveTelexSettings({
-                    logonCode: document.getElementById("savedTelexCode").value.trim(),
-                    defaultCallsign: document.getElementById("savedTelexCallsign").value.trim()
+                    logonCode: document.getElementById("savedTelexCode").value.trim()
                 });
                 document.getElementById("savedTelexCode").blur();
-                document.getElementById("savedTelexCallsign").blur();
             });
             document.getElementById("clearTelexSettingsBtn").addEventListener("click", () => {
                 localStorage.removeItem("hpf_telex_settings");
                 document.getElementById("savedTelexCode").value = "";
-                document.getElementById("savedTelexCallsign").value = "";
             });
         }
 
@@ -1290,15 +1341,15 @@
             document.getElementById("mainPanel").innerHTML = `
                 <div class="grid">
                     <section class="card">
-                        <h2>Current Bookings</h2>
+                        <h2>Show Pilot Booking</h2>
                         <div class="list">
                             ${renderBookingButtons(bookingsData || [], "show")}
                         </div>
                     </section>
                     <section class="card">
-                        <h2>OFP Ready</h2>
-                        <div class="list">
-                            ${renderBookingButtons(bookingsData || [], "simbrief")}
+                        <h2>Booking Detail</h2>
+                        <div id="bookingDetail">
+                            <p class="empty">Select a booking to show full details. SimBrief OFP access is available at the bottom of each booking detail.</p>
                         </div>
                     </section>
                 </div>
@@ -1344,6 +1395,94 @@
                 </div>
             `;
             bindBookingButtons();
+        }
+
+        function renderWeather() {
+            document.getElementById("mainPanel").innerHTML = `
+                <div class="grid">
+                    <section class="card wide">
+                        <h2>Request Weather Information</h2>
+                        <div class="weather-form">
+                            <div class="field" style="margin:0;">
+                                <label for="wxIcaoInput">Airport ICAO</label>
+                                <input id="wxIcaoInput" autocomplete="off" maxlength="4" placeholder="LEMD">
+                            </div>
+                            <button class="primary-btn" id="wxRequestBtn">REQUEST METAR</button>
+                        </div>
+                    </section>
+                    <section class="card wide">
+                        <h2>METAR Result</h2>
+                        <div id="wxResult">
+                            <p class="empty">Enter an ICAO code to request the latest METAR.</p>
+                        </div>
+                    </section>
+                </div>
+            `;
+
+            const input = document.getElementById("wxIcaoInput");
+            const button = document.getElementById("wxRequestBtn");
+            button.addEventListener("click", requestWeather);
+            input.addEventListener("keydown", (event) => {
+                if (event.key === "Enter") requestWeather();
+            });
+        }
+
+        async function requestWeather() {
+            const input = document.getElementById("wxIcaoInput");
+            const result = document.getElementById("wxResult");
+            const icao = input.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+            input.value = icao;
+            if (!icao || icao.length < 3) {
+                result.innerHTML = `<p class="error">Enter a valid airport ICAO code.</p>`;
+                return;
+            }
+
+            result.innerHTML = `<p class="empty">Requesting METAR for ${escapeHtml(icao)}...</p>`;
+            try {
+                const res = await fetch(`/api/checkwx?icao=${encodeURIComponent(icao)}`);
+                const json = await res.json();
+                if (!res.ok || json.error) throw new Error(json.message || json.error || `CheckWX HTTP ${res.status}`);
+                result.innerHTML = renderWeatherData(json);
+            } catch (err) {
+                result.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+            }
+        }
+
+        function renderWeatherData(payload) {
+            const report = Array.isArray(payload.data) ? payload.data[0] : payload.data || payload;
+            if (!report) return `<p class="empty">No METAR returned.</p>`;
+            const wind = report.wind
+                ? `${formatValue(report.wind.degrees, "VRB")} / ${formatValue(report.wind.speed_kts)} kt${report.wind.gust_kts ? ` G${report.wind.gust_kts}` : ""}`
+                : "N/A";
+            const clouds = Array.isArray(report.clouds) && report.clouds.length
+                ? report.clouds.map((cloud) => `${formatValue(cloud.code || cloud.text)} ${formatValue(cloud.base_feet_agl, "")}`.trim()).join(", ")
+                : "N/A";
+            const rows = [
+                ["Station", report.icao || report.station?.icao],
+                ["Observed", report.observed || report.observed_time],
+                ["Category", report.flight_category],
+                ["Wind", wind],
+                ["Visibility", report.visibility?.meters ? `${report.visibility.meters} m` : report.visibility?.miles ? `${report.visibility.miles} SM` : report.visibility],
+                ["Clouds", clouds],
+                ["Temperature", report.temperature?.celsius !== undefined ? `${report.temperature.celsius} C` : report.temperature],
+                ["Dewpoint", report.dewpoint?.celsius !== undefined ? `${report.dewpoint.celsius} C` : report.dewpoint],
+                ["Altimeter", report.barometer?.hpa ? `${report.barometer.hpa} hPa` : report.barometer?.hg ? `${report.barometer.hg} inHg` : report.barometer]
+            ];
+
+            return `
+                <div class="weather-report">
+                    <h3>${escapeHtml(formatValue(report.icao || "METAR"))} <span class="wx-badge">${escapeHtml(formatValue(report.flight_category, "WX"))}</span></h3>
+                    <p class="empty" style="margin-bottom:12px;">${escapeHtml(formatValue(report.raw_text || report.raw || "No raw METAR text returned."))}</p>
+                    <div class="data-list">
+                        ${rows.map(([label, value]) => `
+                            <div class="data-row">
+                                <span>${escapeHtml(label)}</span>
+                                <strong>${escapeHtml(formatValue(value))}</strong>
+                            </div>
+                        `).join("")}
+                    </div>
+                </div>
+            `;
         }
 
         function renderPirepButtons(list) {
@@ -1402,8 +1541,21 @@
             const box = document.getElementById("pirepDetail");
             box.innerHTML = `<p class="empty">Loading PIREP ${escapeHtml(id)}...</p>`;
             try {
-                const json = await fetchPilotJson(`/pireps/${id}`);
-                box.innerHTML = renderObjectDetails(json.data || {});
+                const [detailResult, positionsResult, profileResult] = await Promise.allSettled([
+                    fetchPilotJson(`/pireps/${id}`),
+                    fetchPilotJson(`/pireps/${id}/positions`),
+                    fetchPilotJson(`/pireps/${id}/profile`)
+                ]);
+
+                if (detailResult.status === "rejected") throw detailResult.reason;
+
+                const detail = detailResult.value.data || detailResult.value || {};
+                const positions = positionsResult.status === "fulfilled" ? unwrapList(positionsResult.value) : [];
+                const profile = profileResult.status === "fulfilled" ? unwrapList(profileResult.value) : [];
+                box.innerHTML = `
+                    ${renderObjectDetails(detail)}
+                    ${renderPirepTrack(positions, profile, id)}
+                `;
             } catch (err) {
                 box.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
             }
@@ -1415,7 +1567,12 @@
             box.innerHTML = `<p class="empty">Loading booking ${escapeHtml(id)}...</p>`;
             try {
                 const json = await fetchPilotJson(`/bookings/${id}`);
-                box.innerHTML = renderObjectDetails(json.data || {});
+                box.innerHTML = `
+                    ${renderObjectDetails(json.data || {})}
+                    <div class="detail-actions">
+                        <a class="primary-link" href="ofp.html?booking=${encodeURIComponent(id)}">OPEN SIMBRIEF LIDO OFP</a>
+                    </div>
+                `;
             } catch (err) {
                 box.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
             }
@@ -1423,6 +1580,91 @@
 
         async function showSimbriefOfp(id) {
             window.location.href = `ofp.html?booking=${encodeURIComponent(id)}`;
+        }
+
+        function unwrapList(payload) {
+            if (Array.isArray(payload)) return payload;
+            if (Array.isArray(payload?.data)) return payload.data;
+            if (Array.isArray(payload?.data?.data)) return payload.data.data;
+            if (Array.isArray(payload?.positions)) return payload.positions;
+            if (Array.isArray(payload?.data?.positions)) return payload.data.positions;
+            if (Array.isArray(payload?.profile)) return payload.profile;
+            if (Array.isArray(payload?.data?.profile)) return payload.data.profile;
+            return [];
+        }
+
+        function renderPirepTrack(positions, profile, id) {
+            const points = extractTrackPoints(positions);
+            const fallback = points.length >= 2 ? points : extractProfilePoints(profile);
+            if (fallback.length < 2) {
+                return `
+                    <div class="track-card">
+                        <h3>Flight Track</h3>
+                        <p class="empty">No usable track/profile points returned for PIREP #${escapeHtml(id)}.</p>
+                    </div>
+                `;
+            }
+
+            const svg = buildTrackSvg(fallback, points.length >= 2);
+            return `
+                <div class="track-card">
+                    <h3>${points.length >= 2 ? "Flight Track" : "Flight Profile"}</h3>
+                    ${svg}
+                </div>
+            `;
+        }
+
+        function extractTrackPoints(list) {
+            return list
+                .map((point) => ({
+                    x: Number(point.longitude ?? point.lng ?? point.lon),
+                    y: Number(point.latitude ?? point.lat)
+                }))
+                .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+        }
+
+        function extractProfilePoints(list) {
+            return list
+                .map((point, index) => ({
+                    x: Number(point.distance ?? point.elapsed_time ?? point.time ?? index),
+                    y: Number(point.altitude ?? point.alt ?? point.flight_level ?? point.fl)
+                }))
+                .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+        }
+
+        function buildTrackSvg(points, isGeoTrack) {
+            const width = 1000;
+            const height = 260;
+            const pad = 28;
+            const xs = points.map((point) => point.x);
+            const ys = points.map((point) => point.y);
+            const minX = Math.min(...xs);
+            const maxX = Math.max(...xs);
+            const minY = Math.min(...ys);
+            const maxY = Math.max(...ys);
+            const scale = (value, min, max, start, end) => {
+                if (max === min) return (start + end) / 2;
+                return start + ((value - min) / (max - min)) * (end - start);
+            };
+            const polyline = points.map((point) => {
+                const x = scale(point.x, minX, maxX, pad, width - pad);
+                const y = scale(point.y, minY, maxY, height - pad, pad);
+                return `${x.toFixed(1)},${y.toFixed(1)}`;
+            }).join(" ");
+            const first = polyline.split(" ")[0];
+            const last = polyline.split(" ").at(-1);
+            const [startX, startY] = first.split(",");
+            const [endX, endY] = last.split(",");
+
+            return `
+                <svg class="track-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${isGeoTrack ? "Flight track" : "Flight profile"}">
+                    <polyline points="${polyline}" fill="none" stroke="#ffc400" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"></polyline>
+                    <circle cx="${startX}" cy="${startY}" r="8" fill="#ff6b6b"></circle>
+                    <circle cx="${endX}" cy="${endY}" r="8" fill="#72f0a3"></circle>
+                    <text x="${Math.min(Number(startX) + 10, width - 80)}" y="${Math.max(Number(startY) - 10, 18)}" fill="#fff" font-size="14" font-weight="700">DEP</text>
+                    <text x="${Math.min(Number(endX) + 10, width - 80)}" y="${Math.max(Number(endY) - 10, 18)}" fill="#fff" font-size="14" font-weight="700">ARR</text>
+                </svg>
+            `;
         }
 
         function renderObjectDetails(data) {
@@ -1944,7 +2186,7 @@ SERVER RELAY REQUIRED BEFORE LIVE HOPPIE SEND/RECEIVE</div>
             const networks = pilotData?.networks || {};
             return {
                 logonCode: settings.logonCode || "",
-                callsign: booking?.callsign || settings.defaultCallsign || "",
+                callsign: booking?.callsign || "",
                 vatsimId: networks.vatsim_id || pilotData?.vatsim_id || "",
                 dep: booking ? shortAirport(booking, "departure") : "N/A",
                 arr: booking ? shortAirport(booking, "arrival") : "N/A",
