@@ -435,8 +435,44 @@
 
         .telex {
             display: grid;
-            grid-template-columns: minmax(280px, 360px) 1fr;
+            grid-template-columns: 320px minmax(0, 1fr) 340px;
             gap: 14px;
+        }
+
+        .telex-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 30px;
+            padding: 0 11px;
+            border-radius: 999px;
+            background: rgba(255,196,0,0.12);
+            color: var(--yellow);
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .template-grid {
+            display: grid;
+            gap: 8px;
+        }
+
+        .template-btn {
+            min-height: 36px;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            cursor: pointer;
+            text-align: left;
+            padding: 8px 10px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .template-btn:hover {
+            border-color: rgba(255,196,0,0.38);
+            background: rgba(255,196,0,0.08);
         }
 
         .field {
@@ -914,6 +950,7 @@
                     if (!bookingsData || force) bookingsData = await loadBookings();
                     renderSimbriefOfp();
                 } else if (currentView === "telex") {
+                    if (!bookingsData || force) bookingsData = await loadBookings();
                     renderTelex();
                 }
             } catch (err) {
@@ -1166,7 +1203,7 @@
 
             document.getElementById("mainPanel").innerHTML = `
                 <div class="grid">
-                    <section class="card wide">
+                    <section class="card">
                         <h2>Pilot Profile</h2>
                         <div class="data-list">
                             ${rows.map(([label, value]) => `
@@ -1177,8 +1214,54 @@
                             `).join("")}
                         </div>
                     </section>
+                    <section class="card">
+                        <h2>TELEX Settings</h2>
+                        <div class="field">
+                            <label for="savedTelexCode">Hoppie LOGON Code</label>
+                            <input id="savedTelexCode" type="password" autocomplete="off" placeholder="Saved locally in this browser">
+                        </div>
+                        <div class="field">
+                            <label for="savedTelexCallsign">Default Callsign</label>
+                            <input id="savedTelexCallsign" autocomplete="off" placeholder="Optional, booking callsign has priority">
+                        </div>
+                        <button class="primary-btn" id="saveTelexSettingsBtn">SAVE TELEX SETTINGS</button>
+                        <button class="logout-btn" style="width:100%;margin-top:10px;" id="clearTelexSettingsBtn">CLEAR SETTINGS</button>
+                        <p class="empty" style="margin-top:12px;">Stored locally on this browser. A secure backend vault can replace this later.</p>
+                    </section>
                 </div>
             `;
+            loadTelexSettingsForm();
+        }
+
+        function getTelexSettings() {
+            try {
+                return JSON.parse(localStorage.getItem("hpf_telex_settings") || "{}");
+            } catch (err) {
+                return {};
+            }
+        }
+
+        function saveTelexSettings(settings) {
+            localStorage.setItem("hpf_telex_settings", JSON.stringify(settings));
+        }
+
+        function loadTelexSettingsForm() {
+            const settings = getTelexSettings();
+            document.getElementById("savedTelexCode").value = settings.logonCode || "";
+            document.getElementById("savedTelexCallsign").value = settings.defaultCallsign || "";
+            document.getElementById("saveTelexSettingsBtn").addEventListener("click", () => {
+                saveTelexSettings({
+                    logonCode: document.getElementById("savedTelexCode").value.trim(),
+                    defaultCallsign: document.getElementById("savedTelexCallsign").value.trim()
+                });
+                document.getElementById("savedTelexCode").blur();
+                document.getElementById("savedTelexCallsign").blur();
+            });
+            document.getElementById("clearTelexSettingsBtn").addEventListener("click", () => {
+                localStorage.removeItem("hpf_telex_settings");
+                document.getElementById("savedTelexCode").value = "";
+                document.getElementById("savedTelexCallsign").value = "";
+            });
         }
 
         function renderPirepLogbook() {
@@ -1736,49 +1819,143 @@
         }
 
         function renderTelex() {
+            const context = buildTelexContext();
             document.getElementById("mainPanel").innerHTML = `
                 <div class="telex">
                     <section class="card">
-                        <h2>Hoppie Logon</h2>
+                        <div class="item-title">
+                            <h2 style="margin:0;">Connection</h2>
+                            <span class="telex-status" id="telexStatus">LOGGED OFF</span>
+                        </div>
                         <div class="field">
                             <label for="telexCallsign">Callsign</label>
-                            <input id="telexCallsign" autocomplete="off" placeholder="HPF123">
+                            <input id="telexCallsign" autocomplete="off" placeholder="HPF123" value="${escapeHtml(context.callsign)}">
                         </div>
                         <div class="field">
                             <label for="telexCode">Hoppie Logon Code</label>
-                            <input id="telexCode" type="password" autocomplete="off" placeholder="Logon code">
+                            <input id="telexCode" type="password" autocomplete="off" placeholder="Saved in Pilot Profile" value="${escapeHtml(context.logonCode)}">
                         </div>
                         <button class="primary-btn" id="telexLogonBtn">LOGON</button>
+                        <button class="logout-btn" style="width:100%;margin-top:10px;" id="loadVatsimPlanBtn">LOAD VATSIM FLIGHT PLAN</button>
+                        <div class="data-list" style="margin-top:14px;">
+                            <div class="data-row"><span>DEP</span><strong id="fpDep">${escapeHtml(context.dep)}</strong></div>
+                            <div class="data-row"><span>ARR</span><strong id="fpArr">${escapeHtml(context.arr)}</strong></div>
+                            <div class="data-row"><span>FL</span><strong id="fpLevel">${escapeHtml(context.level)}</strong></div>
+                        </div>
                     </section>
                     <section class="card">
-                        <h2>TELEX Station</h2>
+                        <h2>Message Station</h2>
                         <div class="field">
                             <label for="telexTo">To</label>
                             <input id="telexTo" autocomplete="off" placeholder="Station or callsign">
                         </div>
                         <div class="field">
                             <label for="telexMessage">Message</label>
-                            <textarea id="telexMessage" placeholder="TYPE TELEX MESSAGE"></textarea>
+                            <textarea id="telexMessage" placeholder="TYPE TELEX MESSAGE">${escapeHtml(context.route ? `REQUEST CLEARANCE ${context.dep}-${context.arr} ROUTE ${context.route}` : "")}</textarea>
                         </div>
                         <button class="primary-btn" id="telexSendBtn">SEND TELEX</button>
+                        <div class="message-log" id="telexLog" style="margin-top:14px;min-height:210px;">HISPAFLY TELEX READY
+SERVER RELAY REQUIRED BEFORE LIVE HOPPIE SEND/RECEIVE</div>
                     </section>
-                    <section class="card wide">
-                        <h2>Message Log</h2>
-                        <div class="message-log" id="telexLog">HOPPIE ACARS GATEWAY READY
-SERVER RELAY REQUIRED BEFORE LIVE SEND/RECEIVE</div>
+                    <section class="card">
+                        <h2>Templates</h2>
+                        <div class="template-grid">
+                            <button class="template-btn" data-template="REQUEST IFR CLEARANCE ${escapeHtml(context.dep)} TO ${escapeHtml(context.arr)}">REQUEST IFR CLEARANCE</button>
+                            <button class="template-btn" data-template="REQUEST CLIMB FL">REQUEST CLIMB</button>
+                            <button class="template-btn" data-template="REQUEST DESCENT FL">REQUEST DESCENT</button>
+                            <button class="template-btn" data-template="REQUEST DIRECT ">REQUEST DIRECT</button>
+                            <button class="template-btn" data-template="WILCO">WILCO</button>
+                            <button class="template-btn" data-template="UNABLE">UNABLE</button>
+                            <button class="template-btn" data-template="STANDBY">STANDBY</button>
+                        </div>
+                        <div class="field" style="margin-top:14px;">
+                            <label for="telexRoute">Flight Plan Route</label>
+                            <textarea id="telexRoute" placeholder="VATSIM route">${escapeHtml(context.route)}</textarea>
+                        </div>
                     </section>
                 </div>
             `;
 
             document.getElementById("telexLogonBtn").addEventListener("click", () => {
                 const callsign = document.getElementById("telexCallsign").value.trim() || "UNKNOWN";
-                document.getElementById("telexLog").textContent = `LOGON REQUEST QUEUED FOR ${callsign}\nSERVER RELAY REQUIRED BEFORE LIVE HOPPIE CONNECT`;
+                const code = document.getElementById("telexCode").value.trim();
+                document.getElementById("telexStatus").textContent = code ? "LOGON READY" : "CODE MISSING";
+                document.getElementById("telexLog").textContent = `LOGON REQUEST QUEUED FOR ${callsign}\n${code ? "SAVED LOGON CODE LOADED" : "NO LOGON CODE SAVED"}\nSERVER RELAY REQUIRED BEFORE LIVE HOPPIE CONNECT`;
             });
             document.getElementById("telexSendBtn").addEventListener("click", () => {
                 const to = document.getElementById("telexTo").value.trim() || "STATION";
                 const msg = document.getElementById("telexMessage").value.trim() || "EMPTY MESSAGE";
                 document.getElementById("telexLog").textContent += `\n\nOUT TO ${to}\n${msg}`;
             });
+            document.querySelectorAll("[data-template]").forEach((button) => {
+                button.addEventListener("click", () => {
+                    document.getElementById("telexMessage").value = button.dataset.template;
+                });
+            });
+            document.getElementById("loadVatsimPlanBtn").addEventListener("click", loadVatsimFlightPlan);
+        }
+
+        function buildTelexContext() {
+            const settings = getTelexSettings();
+            const booking = Array.isArray(bookingsData) && bookingsData.length ? bookingsData[0] : null;
+            const networks = pilotData?.networks || {};
+            return {
+                logonCode: settings.logonCode || "",
+                callsign: booking?.callsign || settings.defaultCallsign || "",
+                vatsimId: networks.vatsim_id || pilotData?.vatsim_id || "",
+                dep: booking ? shortAirport(booking, "departure") : "N/A",
+                arr: booking ? shortAirport(booking, "arrival") : "N/A",
+                level: booking?.altitude ? `FL${Math.round(Number(booking.altitude) / 100)}` : "N/A",
+                route: booking?.user_route || ""
+            };
+        }
+
+        async function loadVatsimFlightPlan() {
+            const networks = pilotData?.networks || {};
+            const vatsimId = networks.vatsim_id || pilotData?.vatsim_id;
+            const log = document.getElementById("telexLog");
+            if (!vatsimId) {
+                log.textContent += "\n\nVATSIM ID NOT AVAILABLE IN PILOT PROFILE";
+                return;
+            }
+
+            log.textContent += `\n\nLOADING VATSIM FLIGHT PLAN FOR ${vatsimId}...`;
+            try {
+                const res = await fetch(`https://api.vatsim.net/v2/members/${encodeURIComponent(vatsimId)}/flightplans`);
+                if (!res.ok) throw new Error(`VATSIM HTTP ${res.status}`);
+                const json = await res.json();
+                const plan = Array.isArray(json) ? json[0] : (json.data?.[0] || json.results?.[0] || json.flightplans?.[0] || json);
+                applyVatsimFlightPlan(plan || {});
+                log.textContent += "\nVATSIM FLIGHT PLAN LOADED";
+            } catch (err) {
+                log.textContent += `\nVATSIM FLIGHT PLAN ERROR: ${err.message}`;
+            }
+        }
+
+        function applyVatsimFlightPlan(plan) {
+            const dep = plan.departure || plan.departure_airport || plan.dep || plan.departure_icao || "N/A";
+            const arr = plan.arrival || plan.arrival_airport || plan.arr || plan.arrival_icao || "N/A";
+            const route = plan.route || plan.flight_route || plan.filed_route || "";
+            const altitude = plan.altitude || plan.cruise_tas || plan.flight_level || "N/A";
+            document.getElementById("fpDep").textContent = dep;
+            document.getElementById("fpArr").textContent = arr;
+            document.getElementById("fpLevel").textContent = formatFlightLevel(altitude);
+            document.getElementById("telexRoute").value = route;
+            document.getElementById("telexMessage").value = `REQUEST CLEARANCE ${dep}-${arr} ROUTE ${route}`;
+        }
+
+        function formatFlightLevel(value) {
+            const text = String(value || "N/A").toUpperCase();
+            if (text.startsWith("FL")) return text;
+            const num = Number.parseInt(text, 10);
+            return Number.isFinite(num) ? `FL${Math.round(num / 100)}` : text;
+        }
+
+        function shortAirport(data, side) {
+            const route = lookupRoute(data.route_id);
+            if (route) return side === "departure" ? route.departure : route.arrival;
+            const airport = lookupAirport(data?.[`${side}_id`]);
+            return airport?.icao || data?.[`${side}_icao`] || data?.[`${side}_id`] || "N/A";
         }
 
         function renderFlightList(list, emptyMessage, isPirep = false) {
