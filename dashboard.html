@@ -1836,7 +1836,9 @@
                             <input id="telexCode" type="password" autocomplete="off" placeholder="Saved in Pilot Profile" value="${escapeHtml(context.logonCode)}">
                         </div>
                         <button class="primary-btn" id="telexLogonBtn">LOGON</button>
+                        <button class="logout-btn" style="width:100%;margin-top:10px;" id="telexPollBtn">POLL INBOX</button>
                         <button class="logout-btn" style="width:100%;margin-top:10px;" id="loadVatsimPlanBtn">LOAD VATSIM FLIGHT PLAN</button>
+                        <p class="empty" style="margin-top:12px;">LOGON validates the relay path. Use POLL INBOX to fetch Hoppie messages.</p>
                         <div class="data-list" style="margin-top:14px;">
                             <div class="data-row"><span>DEP</span><strong id="fpDep">${escapeHtml(context.dep)}</strong></div>
                             <div class="data-row"><span>ARR</span><strong id="fpArr">${escapeHtml(context.arr)}</strong></div>
@@ -1877,22 +1879,63 @@ SERVER RELAY REQUIRED BEFORE LIVE HOPPIE SEND/RECEIVE</div>
             `;
 
             document.getElementById("telexLogonBtn").addEventListener("click", () => {
-                const callsign = document.getElementById("telexCallsign").value.trim() || "UNKNOWN";
-                const code = document.getElementById("telexCode").value.trim();
-                document.getElementById("telexStatus").textContent = code ? "LOGON READY" : "CODE MISSING";
-                document.getElementById("telexLog").textContent = `LOGON REQUEST QUEUED FOR ${callsign}\n${code ? "SAVED LOGON CODE LOADED" : "NO LOGON CODE SAVED"}\nSERVER RELAY REQUIRED BEFORE LIVE HOPPIE CONNECT`;
+                hoppieRequest("logon");
             });
             document.getElementById("telexSendBtn").addEventListener("click", () => {
-                const to = document.getElementById("telexTo").value.trim() || "STATION";
-                const msg = document.getElementById("telexMessage").value.trim() || "EMPTY MESSAGE";
-                document.getElementById("telexLog").textContent += `\n\nOUT TO ${to}\n${msg}`;
+                hoppieRequest("send");
             });
+            document.getElementById("telexPollBtn").addEventListener("click", () => hoppieRequest("poll"));
             document.querySelectorAll("[data-template]").forEach((button) => {
                 button.addEventListener("click", () => {
                     document.getElementById("telexMessage").value = button.dataset.template;
                 });
             });
             document.getElementById("loadVatsimPlanBtn").addEventListener("click", loadVatsimFlightPlan);
+        }
+
+        async function hoppieRequest(action) {
+            const callsign = document.getElementById("telexCallsign").value.trim().toUpperCase();
+            const logon = document.getElementById("telexCode").value.trim();
+            const to = document.getElementById("telexTo").value.trim().toUpperCase() || "SERVER";
+            const packet = document.getElementById("telexMessage").value.trim();
+            const log = document.getElementById("telexLog");
+            const status = document.getElementById("telexStatus");
+
+            if (!callsign || !logon) {
+                status.textContent = "MISSING DATA";
+                log.textContent += "\n\nCALLSIGN AND LOGON CODE ARE REQUIRED";
+                return;
+            }
+
+            status.textContent = action === "poll" ? "POLLING" : "SENDING";
+            log.textContent += `\n\n${action.toUpperCase()} ${callsign}${action === "send" ? ` TO ${to}` : ""}`;
+
+            try {
+                const res = await fetch("/api/hoppie", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        action,
+                        logon,
+                        from: callsign,
+                        to,
+                        packet,
+                        type: action === "send" ? "telex" : undefined
+                    })
+                });
+                const json = await res.json();
+                if (!res.ok || json.error) throw new Error(json.message || json.error || `HTTP ${res.status}`);
+                status.textContent = json.raw?.trim()?.toUpperCase() === "OK" || json.ok ? "CONNECTED" : "RECEIVED";
+                log.textContent += `\nHOPPIE RAW: ${json.raw || "OK"}`;
+                if (Array.isArray(json.messages) && json.messages.length) {
+                    json.messages.forEach((message) => {
+                        log.textContent += `\nIN ${message.from || "UNKNOWN"} ${message.type || ""}\n${message.packet || message.raw}`;
+                    });
+                }
+            } catch (err) {
+                status.textContent = "ERROR";
+                log.textContent += `\nHOPPIE ERROR: ${err.message}`;
+            }
         }
 
         function buildTelexContext() {
