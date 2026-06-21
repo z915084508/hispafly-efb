@@ -93,16 +93,17 @@ function normalizeFlightMapData(json) {
         raw: flight,
         callsign: flight.booking?.callsign || flight.callsign || flight.flight?.callsign || "UNKNOWN",
         flightNumber: flight.booking?.flightNumber || flight.booking?.flight_number || flight.flight_number || flight.flightNumber || "",
-        departure: flight.booking?.departure || flight.departure || flight.departure_icao || "",
-        arrival: flight.booking?.arrival || flight.arrival || flight.arrival_icao || "",
-        phase: flight.phase?.name || flight.phase || flight.status || "ACTIVE",
+        departure: flight.departureAirport?.icao || flight.departureAirport?.identifier || flight.booking?.departure || flight.departure || flight.departure_icao || "",
+        arrival: flight.arrivalAirport?.icao || flight.arrivalAirport?.identifier || flight.booking?.arrival || flight.arrival || flight.arrival_icao || "",
+        phase: flight.progress?.currentPhase || flight.phase?.name || flight.phase || flight.status || "ACTIVE",
         progress: flight.progress ?? flight.flightProgress ?? flight.percent ?? "",
-        altitude: flight.position?.altitude || flight.altitude || flight.booking?.altitude || "",
-        speed: flight.position?.groundspeed || flight.position?.speed || flight.groundspeed || flight.speed || "",
-        heading: flight.position?.heading || flight.heading || "",
+        altitude: firstDefined(flight.progress?.altitude, flight.position?.altitude, flight.altitude, flight.booking?.altitude, ""),
+        speed: firstDefined(flight.progress?.groundSpeed, flight.position?.groundspeed, flight.position?.speed, flight.groundspeed, flight.speed, ""),
+        heading: firstDefined(flight.progress?.magneticHeading, flight.progress?.magnetic_heading, flight.position?.heading, flight.heading, ""),
         pilot: flight.pilot?.username || flight.pilot?.name || "",
         aircraft: flight.aircraft?.name || flight.aircraft?.type || flight.aircraft_type || "",
         position: extractFlightPosition(flight),
+        route: extractRoutePositions(flight),
         positionDebug: summarizePositionFields(flight)
     }));
 }
@@ -120,9 +121,12 @@ function extractFlightPosition(flight) {
         flight.track,
         flight.trackPoints,
         flight.track_points,
-        flight.route?.points
+        flight.route?.points,
+        flight.progress?.posreps
     ];
     const candidates = [
+        flight.progress?.location,
+        flight.progress,
         flight.position,
         flight.currentPosition,
         flight.current_position,
@@ -148,7 +152,26 @@ function extractFlightPosition(flight) {
         if (parsed) return parsed;
     }
 
-    return parsePositionValue(flight);
+    const directPosition = parsePositionValue(flight);
+    if (directPosition) return directPosition;
+
+    return extractAirportPosition(flight.departureAirport);
+}
+
+function extractRoutePositions(flight) {
+    const route = [];
+    const departure = extractAirportPosition(flight.departureAirport);
+    const arrival = extractAirportPosition(flight.arrivalAirport);
+    if (departure) route.push(departure);
+    if (arrival && (!departure || departure.lat !== arrival.lat || departure.lon !== arrival.lon)) {
+        route.push(arrival);
+    }
+    return route;
+}
+
+function extractAirportPosition(airport) {
+    if (!airport) return null;
+    return parsePositionValue(airport);
 }
 
 function parsePositionValue(item) {
@@ -213,11 +236,15 @@ function summarizePositionFields(flight) {
         ["latest_posrep", flight.latest_posrep],
         ["posrep", flight.posrep],
         ["posreps", flight.posreps],
+        ["progress", flight.progress],
+        ["progress.posreps", flight.progress?.posreps],
         ["positionReports", flight.positionReports],
         ["position_reports", flight.position_reports],
         ["track", flight.track],
         ["coordinates", flight.coordinates],
-        ["lat/lon", firstDefined(flight.latitude, flight.lat)]
+        ["departureAirport", flight.departureAirport],
+        ["arrivalAirport", flight.arrivalAirport],
+        ["lat/lon", firstDefined(flight.latitude, flight.lat, flight.progress?.latitude, flight.progress?.lat)]
     ];
 
     keyGroups.forEach(([label, value]) => {
@@ -247,6 +274,16 @@ function renderLiveMapMarkers(flights) {
 
     const bounds = [];
     flights.forEach((flight) => {
+        if (flight.route.length >= 2) {
+            const routeLine = L.polyline(flight.route.map((point) => [point.lat, point.lon]), {
+                color: "#10b981",
+                weight: 4,
+                opacity: 0.78
+            });
+            routeLine.addTo(liveMapLayer);
+            flight.route.forEach((point) => bounds.push([point.lat, point.lon]));
+        }
+
         const marker = L.marker([flight.position.lat, flight.position.lon], {
             icon: L.divIcon({
                 className: "live-plane-marker",
