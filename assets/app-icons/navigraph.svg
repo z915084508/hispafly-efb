@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Navigraph charts">
+  <defs>
+    <linearGradient id="bg" x1="18" y1="16" x2="112" y2="116" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1b2c3f"/>
+      <stop offset="0.54" stop-color="#0b111a"/>
+      <stop offset="1" stop-color="#d71920"/>
+    </linearGradient>
+    <linearGradient id="line" x1="18" y1="88" x2="110" y2="34" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffc400"/>
+      <stop offset="1" stop-color="#fff4a5"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
+  <path d="M24 82c13-20 28-30 46-30 15 0 26-8 34-25" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="5" stroke-linecap="round"/>
+  <path d="M22 96h84M22 74h84M22 52h84M35 30v76M58 30v76M82 30v76" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>
+  <path d="M25 88c14-20 28-30 43-30 19 0 28-9 38-29" fill="none" stroke="url(#line)" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="25" cy="88" r="5" fill="#ffc400"/>
+  <circle cx="68" cy="58" r="5" fill="#ffffff"/>
+  <circle cx="106" cy="29" r="5" fill="#ffc400"/>
+  <path d="M88 78l20 9-20 9 5-9-5-9z" fill="#ffffff"/>
+</svg>
