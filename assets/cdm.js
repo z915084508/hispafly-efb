@@ -7,6 +7,28 @@ let cdmLastUpdated = "";
 let cdmExcludedAirborne = 0;
 let cdmExcludedNotGround = 0;
 const CDM_REFRESH_MS = 30000;
+const CDM_AIRPORT_RADIUS_NM = 6;
+const CDM_AIRPORT_COORDS = {
+    LEPA: { lat: 39.5517, lon: 2.7388 },
+    LEIB: { lat: 38.8729, lon: 1.3731 },
+    LEMH: { lat: 39.8626, lon: 4.2186 },
+    LEMD: { lat: 40.4722, lon: -3.5608 },
+    LEBL: { lat: 41.2974, lon: 2.0833 },
+    LEVC: { lat: 39.4893, lon: -0.4816 },
+    LEAL: { lat: 38.2822, lon: -0.5582 },
+    LEMG: { lat: 36.6749, lon: -4.4991 },
+    LEZL: { lat: 37.4180, lon: -5.8931 },
+    LEGE: { lat: 41.9010, lon: 2.7605 },
+    LEAS: { lat: 43.5636, lon: -6.0346 },
+    LEVX: { lat: 42.2318, lon: -8.6268 },
+    LECO: { lat: 43.3021, lon: -8.3773 },
+    LEST: { lat: 42.8963, lon: -8.4151 },
+    LEGR: { lat: 37.1887, lon: -3.7774 },
+    LEJR: { lat: 36.7446, lon: -6.0601 },
+    LEBB: { lat: 43.3011, lon: -2.9106 },
+    LEBA: { lat: 37.8419, lon: -4.8489 },
+    LEBG: { lat: 42.3576, lon: -3.6208 }
+};
 
 function renderCdmAirport() {
     document.getElementById("mainPanel").innerHTML = `
@@ -171,10 +193,17 @@ function classifyVatsimGroundState(pilot, airport) {
 
     const altitude = Number(pilot.altitude);
     const groundspeed = Number(pilot.groundspeed);
+    const pilotLat = Number(pilot.latitude);
+    const pilotLon = Number(pilot.longitude);
+    const airportCoords = CDM_AIRPORT_COORDS[airport];
+    const distanceNm = airportCoords && Number.isFinite(pilotLat) && Number.isFinite(pilotLon)
+        ? distanceNmBetween(airportCoords.lat, airportCoords.lon, pilotLat, pilotLon)
+        : null;
     const flightPlan = pilot.flight_plan || {};
     const fpDeparture = String(flightPlan.departure || "").toUpperCase();
     const fpArrival = String(flightPlan.arrival || "").toUpperCase();
     const isDepartureFromAirport = fpDeparture === airport && fpArrival && fpArrival !== airport;
+    const isAtAirportPosition = distanceNm !== null ? distanceNm <= CDM_AIRPORT_RADIUS_NM : false;
     const isClearlyAirborne = (
         (Number.isFinite(groundspeed) && groundspeed >= 120) ||
         (Number.isFinite(groundspeed) && groundspeed >= 80 && Number.isFinite(altitude) && altitude >= 1500) ||
@@ -182,10 +211,10 @@ function classifyVatsimGroundState(pilot, airport) {
     );
     const isGroundMovement = !Number.isFinite(groundspeed) || groundspeed < 80;
 
-    if (isDepartureFromAirport && isGroundMovement && !isClearlyAirborne) {
+    if (isDepartureFromAirport && isAtAirportPosition && isGroundMovement && !isClearlyAirborne) {
         return {
             label: "On ground",
-            detail: `${fpDeparture}-${fpArrival} ALT ${formatValue(pilot.altitude)} / GS ${formatValue(pilot.groundspeed)}`,
+            detail: `${fpDeparture}-${fpArrival} ${formatDistance(distanceNm)} from airport`,
             airborne: false,
             onGroundAtAirport: true
         };
@@ -201,42 +230,35 @@ function classifyVatsimGroundState(pilot, airport) {
     }
 
     return {
-        label: "Not departure",
-        detail: `FP ${formatValue(fpDeparture, "N/A")}-${formatValue(fpArrival, "N/A")} / GS ${formatValue(pilot.groundspeed)}`,
+        label: "Not in queue",
+        detail: `FP ${formatValue(fpDeparture, "N/A")}-${formatValue(fpArrival, "N/A")} / ${distanceNm === null ? "no airport position check" : formatDistance(distanceNm)}`,
         airborne: false,
         onGroundAtAirport: false
     };
 }
 
 function renderCdmAirportData(airport, flights, callsignFilter = "") {
-    if (!Array.isArray(flights) || flights.length === 0) {
-        return `<p class="empty">No CDM aircraft returned for ${escapeHtml(airport)}.</p>`;
-    }
-
-    const sorted = [...flights].sort(compareCdmFlights);
+    const sorted = Array.isArray(flights) ? [...flights].sort(compareCdmFlights) : [];
     const filtered = callsignFilter
         ? sorted.filter((flight) => String(flight.callsign || "").toUpperCase().includes(callsignFilter))
         : sorted;
-    const activeCount = sorted.filter((flight) => String(flight.atfcmStatus || "").toUpperCase().includes("ACT")).length;
     const confirmedCount = sorted.filter((flight) => isCdmConfirmed(flight.cdmData?.confirmed)).length;
 
     return `
         <div class="cdm-summary">
             ${cdmStat("Airport", airport)}
-            ${cdmStat("Departure Queue", sorted.length)}
-            ${cdmStat("Active", activeCount)}
-            ${cdmStat("Removed", cdmExcludedAirborne + cdmExcludedNotGround)}
-            ${cdmStat(callsignFilter ? "Matches" : "Confirmed", callsignFilter ? filtered.length : confirmedCount)}
+            ${cdmStat("Queued Aircraft", sorted.length)}
+            ${cdmStat("Confirmed", confirmedCount)}
         </div>
         <div class="cdm-refresh-row">
-            <span>Auto refresh every ${Math.round(CDM_REFRESH_MS / 1000)}s | VATSIM departures only | removed ${cdmExcludedAirborne} airborne and ${cdmExcludedNotGround} not in ${escapeHtml(airport)} departure queue</span>
+            <span>Auto refresh every ${Math.round(CDM_REFRESH_MS / 1000)}s | VATSIM callsign + airport position matched</span>
             <strong id="cdmRefreshStamp">Updated ${escapeHtml(formatCdmRefreshTime(cdmLastUpdated))}</strong>
         </div>
         ${callsignFilter ? `<p class="empty" style="margin-bottom:12px;">Showing callsigns matching ${escapeHtml(callsignFilter)} inside ${escapeHtml(airport)} queue.</p>` : ""}
         <div class="cdm-list">
             ${filtered.length
                 ? filtered.map((flight) => renderCdmFlight(flight, sorted.indexOf(flight) + 1, callsignFilter)).join("")
-                : `<p class="empty">No callsign matching ${escapeHtml(callsignFilter)} found in this airport queue.</p>`}
+                : `<p class="empty">${callsignFilter ? `No callsign matching ${escapeHtml(callsignFilter)} found in this airport queue.` : `No VATSIM ground departures matched at ${escapeHtml(airport)}.`}</p>`}
         </div>
     `;
 }
@@ -266,15 +288,11 @@ function renderCdmFlight(flight, sequence, callsignFilter = "") {
                 <span class="pill">${escapeHtml(formatValue(status))}</span>
             </div>
             <div class="meta">
-                <span>DEP: ${escapeHtml(formatValue(flight.departure))}</span>
-                <span>ARR: ${escapeHtml(formatValue(flight.arrival))}</span>
-                <span>VATSIM: ${escapeHtml(formatValue(flight.vatsimState?.label, "Unknown"))}</span>
+                <span>CALLSIGN: ${escapeHtml(formatValue(flight.callsign, "UNKNOWN"))}</span>
+                <span>CDM DATA</span>
+                <span>${escapeHtml(formatValue(flight.vatsimState?.detail, ""))}</span>
             </div>
             <div class="cdm-data-grid">
-                <div class="cdm-data-cell">
-                    <span>Live State</span>
-                    <strong>${escapeHtml(formatValue(flight.vatsimState?.detail, "No match"))}</strong>
-                </div>
                 ${cdmRows.map(([label, value]) => `
                     <div class="cdm-data-cell">
                         <span>${escapeHtml(label)}</span>
@@ -301,6 +319,25 @@ function getCdmSortTime(flight) {
     const hhmm = formatCdmTime(value).match(/^(\d{2})(\d{2})$/);
     if (hhmm) return Number(hhmm[1]) * 60 + Number(hhmm[2]);
     return Number.MAX_SAFE_INTEGER;
+}
+
+function distanceNmBetween(lat1, lon1, lat2, lon2) {
+    const earthRadiusNm = 3440.065;
+    const dLat = toRadians(lat2 - lat1);
+    const dLon = toRadians(lon2 - lon1);
+    const rLat1 = toRadians(lat1);
+    const rLat2 = toRadians(lat2);
+    const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(rLat1) * Math.cos(rLat2) * Math.sin(dLon / 2) ** 2;
+    return earthRadiusNm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function toRadians(value) {
+    return value * Math.PI / 180;
+}
+
+function formatDistance(value) {
+    return Number.isFinite(value) ? `${value.toFixed(1)} NM` : "N/A";
 }
 
 function startCdmAutoRefresh() {
