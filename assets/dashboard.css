@@ -423,23 +423,23 @@
         }
 
         .app-icon {
-            display: grid;
-            place-items: center;
             width: 88px;
             height: 88px;
-            border: 1px solid rgba(255,255,255,0.22);
-            border-radius: 24px;
-            color: #fff;
-            font-size: 25px;
-            font-weight: 900;
-            letter-spacing: 0;
+            border-radius: 23px;
             box-shadow: 0 18px 42px rgba(0,0,0,0.36);
-            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+            overflow: hidden;
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .app-icon img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         .app-tile:hover .app-icon {
             transform: translateY(-4px);
-            border-color: rgba(255,255,255,0.44);
             box-shadow: 0 24px 52px rgba(0,0,0,0.42);
         }
 
@@ -452,34 +452,6 @@
 
         .app-subhead {
             line-height: 1.25;
-        }
-
-        .app-tone-red .app-icon {
-            background: linear-gradient(145deg, #d71920, #781116);
-        }
-
-        .app-tone-blue .app-icon {
-            background: linear-gradient(145deg, #3867ff, #123168);
-        }
-
-        .app-tone-amber .app-icon {
-            background: linear-gradient(145deg, #ffc400, #a65510);
-        }
-
-        .app-tone-cyan .app-icon {
-            background: linear-gradient(145deg, #25c7d9, #0e4968);
-        }
-
-        .app-tone-green .app-icon {
-            background: linear-gradient(145deg, #33c36b, #0e5730);
-        }
-
-        .app-tone-violet .app-icon {
-            background: linear-gradient(145deg, #8b65ff, #3c216f);
-        }
-
-        .app-tone-slate .app-icon {
-            background: linear-gradient(145deg, #607080, #151b24);
         }
 
         .panel::-webkit-scrollbar {

@@ -20,13 +20,13 @@
         };
 
         const dashboardApps = [
-            { view: "notams", label: "NOTAM", subhead: "Operational notices", icon: "!", tone: "red" },
-            { view: "profile", label: "Pilot Profile", subhead: "Identity and rank", icon: "ID", tone: "blue" },
-            { view: "flightCenter", label: "Flight Center", subhead: "Bookings and OFP", icon: "FPL", tone: "amber" },
-            { view: "weather", label: "WX Info", subhead: "METAR by ICAO", icon: "WX", tone: "cyan" },
-            { view: "telex", label: "TELEX", subhead: "Hoppie ACARS", icon: "TX", tone: "green" },
-            { view: "cdmAirport", label: "CDM Airport", subhead: "Airport queue", icon: "CDM", tone: "violet" },
-            { view: "liveMap", label: "Live Map", subhead: "VAMSYS live ops", icon: "MAP", tone: "slate" }
+            { view: "notams", label: "NOTAM", subhead: "Operational notices", icon: "assets/app-icons/notams.png" },
+            { view: "profile", label: "Pilot Profile", subhead: "Identity and rank", icon: "assets/app-icons/profile.png" },
+            { view: "flightCenter", label: "Flight Center", subhead: "Bookings and OFP", icon: "assets/app-icons/flight-center.png" },
+            { view: "weather", label: "WX Info", subhead: "METAR by ICAO", icon: "assets/app-icons/weather.png" },
+            { view: "telex", label: "TELEX", subhead: "Hoppie ACARS", icon: "assets/app-icons/telex.png" },
+            { view: "cdmAirport", label: "CDM Airport", subhead: "Airport queue", icon: "assets/app-icons/cdm-airport.png" },
+            { view: "liveMap", label: "Live Map", subhead: "VAMSYS live ops", icon: "assets/app-icons/live-map.png" }
         ];
 
         window.addEventListener("DOMContentLoaded", () => {
@@ -130,8 +130,10 @@
             const name = buildName(pilotData || {}) || "HISPAFLY Pilot";
             const rank = getRank();
             const apps = dashboardApps.map((app) => `
-                <button class="app-tile app-tone-${app.tone}" data-home-view="${escapeHtml(app.view)}">
-                    <span class="app-icon" aria-hidden="true">${escapeHtml(app.icon)}</span>
+                <button class="app-tile" data-home-view="${escapeHtml(app.view)}">
+                    <span class="app-icon" aria-hidden="true">
+                        <img src="${escapeHtml(app.icon)}" alt="">
+                    </span>
                     <span class="app-label">${escapeHtml(app.label)}</span>
                     <span class="app-subhead">${escapeHtml(app.subhead)}</span>
                 </button>
