@@ -1334,6 +1334,10 @@
                 overflow: auto;
             }
 
+            body::before {
+                background-position: center top;
+            }
+
             .app {
                 min-height: 100svh;
             }
@@ -1374,7 +1378,7 @@
             .content {
                 height: auto;
                 min-height: 70svh;
-                padding: 18px;
+                padding: 14px;
                 overflow: visible;
             }
 
@@ -1413,38 +1417,67 @@
 
             .content.is-home .panel {
                 height: auto;
+                padding: 0;
             }
 
             .home-screen {
-                min-height: calc(100svh - 170px);
-                gap: 22px;
+                min-height: calc(100svh - 30px);
+                gap: 0;
+                padding: 18px 8px calc(112px + env(safe-area-inset-bottom, 0px));
             }
 
             .home-identity {
                 align-items: start;
                 flex-direction: column;
+                gap: 0;
+            }
+
+            .home-kicker {
+                font-size: 11px;
+                margin-bottom: 4px;
+            }
+
+            .home-identity strong {
+                font-size: 22px;
+            }
+
+            .home-identity small {
+                margin-top: 4px;
+                font-size: 12px;
+            }
+
+            .home-links {
+                gap: 14px;
+                margin-top: 16px;
+                font-size: 12px;
             }
 
             .app-grid {
                 position: static;
                 transform: none;
-                grid-template-columns: repeat(2, minmax(118px, 1fr));
-                gap: 22px 18px;
-                margin-top: 22px;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 24px 14px;
+                margin-top: 40px;
+                width: 100%;
             }
 
             .app-tile {
-                min-height: 142px;
+                min-height: 112px;
             }
 
             .app-icon {
-                width: 78px;
-                height: 78px;
-                border-radius: 21px;
+                width: 76px;
+                height: 76px;
+                border-radius: 20px;
             }
 
             .app-label {
-                font-size: 14px;
+                font-size: 13px;
+                line-height: 1.15;
+            }
+
+            .app-tile:nth-child(7) {
+                grid-column: 2;
             }
 
             .grid,
