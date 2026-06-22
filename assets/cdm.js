@@ -8,27 +8,7 @@ let cdmExcludedAirborne = 0;
 let cdmExcludedNotGround = 0;
 const CDM_REFRESH_MS = 30000;
 const CDM_AIRPORT_RADIUS_NM = 6;
-const CDM_AIRPORT_COORDS = {
-    LEPA: { lat: 39.5517, lon: 2.7388 },
-    LEIB: { lat: 38.8729, lon: 1.3731 },
-    LEMH: { lat: 39.8626, lon: 4.2186 },
-    LEMD: { lat: 40.4722, lon: -3.5608 },
-    LEBL: { lat: 41.2974, lon: 2.0833 },
-    LEVC: { lat: 39.4893, lon: -0.4816 },
-    LEAL: { lat: 38.2822, lon: -0.5582 },
-    LEMG: { lat: 36.6749, lon: -4.4991 },
-    LEZL: { lat: 37.4180, lon: -5.8931 },
-    LEGE: { lat: 41.9010, lon: 2.7605 },
-    LEAS: { lat: 43.5636, lon: -6.0346 },
-    LEVX: { lat: 42.2318, lon: -8.6268 },
-    LECO: { lat: 43.3021, lon: -8.3773 },
-    LEST: { lat: 42.8963, lon: -8.4151 },
-    LEGR: { lat: 37.1887, lon: -3.7774 },
-    LEJR: { lat: 36.7446, lon: -6.0601 },
-    LEBB: { lat: 43.3011, lon: -2.9106 },
-    LEBA: { lat: 37.8419, lon: -4.8489 },
-    LEBG: { lat: 42.3576, lon: -3.6208 }
-};
+const CDM_AIRPORT_COORDS = window.HPF_AIRPORT_COORDS || {};
 
 function renderCdmAirport() {
     document.getElementById("mainPanel").innerHTML = `
