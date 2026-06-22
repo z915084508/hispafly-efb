@@ -92,7 +92,7 @@
         .shell {
             min-height: calc(100vh - 30px);
             display: grid;
-            grid-template-columns: 286px minmax(0, 1fr);
+            grid-template-columns: minmax(0, 1fr);
         }
 
         .sidebar {
@@ -214,6 +214,23 @@
             font-size: 12px;
         }
 
+        .legal-links {
+            display: flex;
+            gap: 12px;
+            padding: 0 2px;
+            font-size: 11px;
+        }
+
+        .legal-links a {
+            color: rgba(255,255,255,0.46);
+            text-decoration: none;
+        }
+
+        .legal-links a:hover {
+            color: rgba(255,255,255,0.82);
+            text-decoration: underline;
+        }
+
         .logout-btn {
             min-height: 42px;
             border: 1px solid rgba(215,25,32,0.8);
@@ -228,15 +245,47 @@
             min-width: 0;
             height: calc(100vh - 30px);
             overflow: hidden;
-            padding: 28px;
+            padding: 24px;
         }
 
         .content-header {
-            display: flex;
+            display: grid;
+            grid-template-columns: 48px minmax(0, 1fr) auto;
             align-items: end;
-            justify-content: space-between;
-            gap: 18px;
+            gap: 16px;
             margin-bottom: 20px;
+        }
+
+        .content.is-home .content-header {
+            grid-template-columns: minmax(0, 1fr) auto;
+        }
+
+        .content.is-home .content-header > div:first-of-type {
+            grid-column: 1;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .icon-btn {
+            width: 48px;
+            height: 48px;
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.08);
+            color: #fff;
+            cursor: pointer;
+            font-size: 26px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .icon-btn:hover {
+            border-color: rgba(255,196,0,0.44);
+            background: rgba(255,196,0,0.10);
         }
 
         .eyebrow {
@@ -269,6 +318,12 @@
             font-weight: 700;
         }
 
+        .header-logout {
+            min-width: 98px;
+            border-color: rgba(255,255,255,0.18);
+            background: rgba(255,255,255,0.06);
+        }
+
         .panel {
             height: calc(100vh - 148px);
             overflow: auto;
@@ -278,6 +333,153 @@
             background: rgba(4,7,12,0.62);
             box-shadow: var(--shadow);
             backdrop-filter: blur(14px);
+        }
+
+        .content.is-home .panel {
+            height: calc(100vh - 126px);
+            border-color: transparent;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+            backdrop-filter: none;
+        }
+
+        .home-screen {
+            min-height: 100%;
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 28px;
+            padding: 10px 4px 20px;
+        }
+
+        .home-identity {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+        }
+
+        .home-kicker,
+        .home-identity small,
+        .app-subhead {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .home-kicker {
+            display: block;
+            color: var(--yellow);
+            font-weight: 800;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .home-identity strong {
+            display: block;
+            color: #fff;
+            font-size: 24px;
+            line-height: 1.1;
+        }
+
+        .home-identity small {
+            display: block;
+            margin-top: 5px;
+        }
+
+        .home-links {
+            display: flex;
+            gap: 12px;
+            font-size: 12px;
+        }
+
+        .home-links a {
+            color: rgba(255,255,255,0.58);
+            text-decoration: none;
+        }
+
+        .home-links a:hover {
+            color: #fff;
+            text-decoration: underline;
+        }
+
+        .app-grid {
+            align-self: center;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(104px, 156px));
+            justify-content: center;
+            gap: 28px 34px;
+        }
+
+        .app-tile {
+            display: grid;
+            justify-items: center;
+            gap: 9px;
+            min-height: 156px;
+            border: 0;
+            background: transparent;
+            color: #fff;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .app-icon {
+            display: grid;
+            place-items: center;
+            width: 88px;
+            height: 88px;
+            border: 1px solid rgba(255,255,255,0.22);
+            border-radius: 24px;
+            color: #fff;
+            font-size: 25px;
+            font-weight: 900;
+            letter-spacing: 0;
+            box-shadow: 0 18px 42px rgba(0,0,0,0.36);
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+
+        .app-tile:hover .app-icon {
+            transform: translateY(-4px);
+            border-color: rgba(255,255,255,0.44);
+            box-shadow: 0 24px 52px rgba(0,0,0,0.42);
+        }
+
+        .app-label {
+            color: #fff;
+            font-size: 14px;
+            font-weight: 800;
+            line-height: 1.2;
+        }
+
+        .app-subhead {
+            line-height: 1.25;
+        }
+
+        .app-tone-red .app-icon {
+            background: linear-gradient(145deg, #d71920, #781116);
+        }
+
+        .app-tone-blue .app-icon {
+            background: linear-gradient(145deg, #3867ff, #123168);
+        }
+
+        .app-tone-amber .app-icon {
+            background: linear-gradient(145deg, #ffc400, #a65510);
+        }
+
+        .app-tone-cyan .app-icon {
+            background: linear-gradient(145deg, #25c7d9, #0e4968);
+        }
+
+        .app-tone-green .app-icon {
+            background: linear-gradient(145deg, #33c36b, #0e5730);
+        }
+
+        .app-tone-violet .app-icon {
+            background: linear-gradient(145deg, #8b65ff, #3c216f);
+        }
+
+        .app-tone-slate .app-icon {
+            background: linear-gradient(145deg, #607080, #151b24);
         }
 
         .panel::-webkit-scrollbar {
@@ -1198,9 +1400,67 @@
                 overflow: visible;
             }
 
+            .content-header,
+            .content.is-home .content-header {
+                grid-template-columns: 46px minmax(0, 1fr);
+                align-items: center;
+            }
+
+            .content.is-home .content-header {
+                grid-template-columns: minmax(0, 1fr) auto;
+            }
+
+            .header-actions {
+                grid-column: 1 / -1;
+                justify-content: space-between;
+            }
+
+            .content.is-home .header-actions {
+                grid-column: 2;
+                justify-content: end;
+            }
+
+            .content.is-home .refresh-btn {
+                display: none;
+            }
+
+            h1 {
+                font-size: 30px;
+            }
+
             .panel {
                 height: auto;
                 max-height: none;
+            }
+
+            .content.is-home .panel {
+                height: auto;
+            }
+
+            .home-screen {
+                min-height: calc(100svh - 170px);
+                gap: 22px;
+            }
+
+            .home-identity {
+                align-items: start;
+                flex-direction: column;
+            }
+
+            .app-grid {
+                grid-template-columns: repeat(2, minmax(118px, 1fr));
+                gap: 22px 18px;
+            }
+
+            .app-tile {
+                min-height: 142px;
+            }
+
+            .app-icon {
+                width: 78px;
+                height: 78px;
+                border-radius: 21px;
+                font-size: 22px;
             }
 
             .grid,

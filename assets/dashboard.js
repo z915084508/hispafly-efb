@@ -1,6 +1,6 @@
 ﻿const API_ROOT = "https://vamsys.io/api/v3/pilot";
         let accessToken = localStorage.getItem("vamsys_token");
-        let currentView = "notams";
+        let currentView = "home";
         let pilotData = null;
         let profileData = null;
         let rankData = null;
@@ -19,6 +19,16 @@
             "Accept": "application/json"
         };
 
+        const dashboardApps = [
+            { view: "notams", label: "NOTAM", subhead: "Operational notices", icon: "!", tone: "red" },
+            { view: "profile", label: "Pilot Profile", subhead: "Identity and rank", icon: "ID", tone: "blue" },
+            { view: "flightCenter", label: "Flight Center", subhead: "Bookings and OFP", icon: "FPL", tone: "amber" },
+            { view: "weather", label: "WX Info", subhead: "METAR by ICAO", icon: "WX", tone: "cyan" },
+            { view: "telex", label: "TELEX", subhead: "Hoppie ACARS", icon: "TX", tone: "green" },
+            { view: "cdmAirport", label: "CDM Airport", subhead: "Airport queue", icon: "CDM", tone: "violet" },
+            { view: "liveMap", label: "Live Map", subhead: "VAMSYS live ops", icon: "MAP", tone: "slate" }
+        ];
+
         window.addEventListener("DOMContentLoaded", () => {
             updateUtcTime();
             setInterval(updateUtcTime, 30000);
@@ -34,25 +44,18 @@
         }
 
         function setupNavigation() {
-            document.querySelectorAll(".menu-btn, .submenu-btn").forEach((button) => {
-                button.addEventListener("click", () => {
-                    if (button.dataset.action === "logout") {
-                        logout();
-                        return;
-                    }
-                    if (button.dataset.link) {
-                        window.location.href = button.dataset.link;
-                        return;
-                    }
-                    setView(button.dataset.view);
-                });
-            });
+            document.getElementById("homeBtn").addEventListener("click", () => setView("home"));
             document.getElementById("refreshBtn").addEventListener("click", () => refreshCurrentView(true));
+            document.getElementById("logoutBtn").addEventListener("click", logout);
         }
 
         async function loadInitialDashboard() {
-            await loadPilotProfile();
-            await setView("notams");
+            try {
+                await loadPilotProfile();
+            } catch (err) {
+                console.warn("Pilot profile unavailable", err);
+            }
+            await setView("home");
         }
 
         async function setView(view) {
@@ -63,19 +66,16 @@
                 stopLiveMapAutoRefresh();
             }
             currentView = view;
-            document.querySelectorAll(".menu-btn, .submenu-btn").forEach((button) => {
-                button.classList.toggle("active", button.dataset.view === view);
-            });
-            document.querySelectorAll(".menu-group").forEach((group) => {
-                const isOpen = !!group.querySelector(`[data-view="${view}"]`);
-                group.classList.toggle("open", isOpen);
-            });
+            document.querySelector(".content").classList.toggle("is-home", view === "home");
+            document.getElementById("homeBtn").hidden = view === "home";
+            document.getElementById("refreshBtn").hidden = view === "home";
             updateHeader(view);
             await refreshCurrentView(false);
         }
 
         function updateHeader(view) {
             const copy = {
+                home: ["HISPAFLY EFB", "Dashboard", "Select an EFB function."],
                 notams: ["Operations", "NOTAM", "Operational notices and airline advisories."],
                 profile: ["Pilot", "Pilot Profile", "Crew identity, network IDs, rank, and flight time."],
                 pirepLogbook: ["Logbook", "PIREP Logbook", "Select a PIREP to open the full pilot report."],
@@ -92,6 +92,10 @@
 
         async function refreshCurrentView(force) {
             const panel = document.getElementById("mainPanel");
+            if (currentView === "home") {
+                renderHome();
+                return;
+            }
             panel.innerHTML = `<p class="empty">Loading ${escapeHtml(currentView)}...</p>`;
 
             try {
@@ -120,6 +124,41 @@
             } catch (err) {
                 panel.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
             }
+        }
+
+        function renderHome() {
+            const name = buildName(pilotData || {}) || "HISPAFLY Pilot";
+            const rank = getRank();
+            const apps = dashboardApps.map((app) => `
+                <button class="app-tile app-tone-${app.tone}" data-home-view="${escapeHtml(app.view)}">
+                    <span class="app-icon" aria-hidden="true">${escapeHtml(app.icon)}</span>
+                    <span class="app-label">${escapeHtml(app.label)}</span>
+                    <span class="app-subhead">${escapeHtml(app.subhead)}</span>
+                </button>
+            `).join("");
+
+            document.getElementById("mainPanel").innerHTML = `
+                <section class="home-screen">
+                    <div class="home-identity">
+                        <div>
+                            <span class="home-kicker">Crew tablet</span>
+                            <strong>${escapeHtml(name)}</strong>
+                            <small>${escapeHtml(rank)}</small>
+                        </div>
+                        <div class="home-links">
+                            <a href="privacy-policy.html">Privacy</a>
+                            <a href="intellectual-property.html">IP Notice</a>
+                        </div>
+                    </div>
+                    <div class="app-grid" aria-label="EFB functions">
+                        ${apps}
+                    </div>
+                </section>
+            `;
+
+            document.querySelectorAll("[data-home-view]").forEach((button) => {
+                button.addEventListener("click", () => setView(button.dataset.homeView));
+            });
         }
 
         function buildApiUrl(path, params = {}) {
@@ -183,8 +222,10 @@
             statisticsData = statisticsResult.status === "fulfilled" ? (statisticsResult.value.data || {}) : {};
 
             const fullName = buildName(pilotData);
-            document.getElementById("pilotName").textContent = fullName || "HISPAFLY Pilot";
-            document.getElementById("pilotRank").textContent = getRank();
+            const pilotNameEl = document.getElementById("pilotName");
+            const pilotRankEl = document.getElementById("pilotRank");
+            if (pilotNameEl) pilotNameEl.textContent = fullName || "HISPAFLY Pilot";
+            if (pilotRankEl) pilotRankEl.textContent = getRank();
             return pilotData;
         }
 
@@ -388,9 +429,19 @@
                         <button class="logout-btn" style="width:100%;margin-top:10px;" id="clearTelexSettingsBtn">CLEAR SETTINGS</button>
                         <p class="empty" style="margin-top:12px;">Stored locally on this browser. A secure backend vault can replace this later.</p>
                     </section>
+                    <section class="card wide">
+                        <h2>Profile Tools</h2>
+                        <div class="action-grid">
+                            <button class="action-card item-button" id="openPirepLogbookBtn">
+                                <strong>PIREP Logbook</strong>
+                                <p>Open submitted reports and inspect full pilot report details.</p>
+                            </button>
+                        </div>
+                    </section>
                 </div>
             `;
             loadTelexSettingsForm();
+            document.getElementById("openPirepLogbookBtn").addEventListener("click", () => setView("pirepLogbook"));
         }
 
         function getTelexSettings() {

@@ -24,76 +24,18 @@
         </div>
 
         <div class="shell">
-            <aside class="sidebar">
-                <div class="brand">
-                    <img src="assets/hispafly-logo-white.png" alt="HISPAFLY">
-                </div>
-
-                <nav class="menu" aria-label="Dashboard sections">
-                    <div class="menu-group" data-group="notams">
-                        <button class="menu-btn" data-view="notams">
-                            <span>NOTAM</span>
-                            <small>Operational notices</small>
-                        </button>
-                    </div>
-                    <div class="menu-group" data-group="profile">
-                        <button class="menu-btn" data-view="profile">
-                            <span>Pilot Profile</span>
-                            <small>Identity and rank</small>
-                        </button>
-                        <div class="submenu">
-                            <button class="submenu-btn" data-view="pirepLogbook">PIREP Logbook</button>
-                            <button class="submenu-btn" data-action="logout">Log Out</button>
-                        </div>
-                    </div>
-                    <div class="menu-group" data-group="flightCenter">
-                        <button class="menu-btn" data-view="flightCenter">
-                            <span>Flight Center</span>
-                            <small>Bookings and OFP</small>
-                        </button>
-                    </div>
-                    <div class="menu-group" data-group="weather">
-                        <button class="menu-btn" data-view="weather">
-                            <span>WX Info</span>
-                            <small>METAR by ICAO</small>
-                        </button>
-                    </div>
-                    <div class="menu-group" data-group="telex">
-                        <button class="menu-btn" data-view="telex">
-                            <span>TELEX</span>
-                            <small>Hoppie ACARS</small>
-                        </button>
-                    </div>
-                    <div class="menu-group" data-group="cdmAirport">
-                        <button class="menu-btn" data-view="cdmAirport">
-                            <span>CDM Airport Status</span>
-                            <small>Airport queue</small>
-                        </button>
-                    </div>
-                    <div class="menu-group" data-group="liveMap">
-                        <button class="menu-btn" data-view="liveMap">
-                            <span>Live Flight Map</span>
-                            <small>VAMSYS live ops</small>
-                        </button>
-                    </div>
-                </nav>
-
-                <div class="sidebar-footer">
-                    <div class="pilot-chip">
-                        <strong id="pilotName">Pilot loading</strong>
-                        <span id="pilotRank">HISPAFLY crew</span>
-                    </div>
-                </div>
-            </aside>
-
             <section class="content">
                 <div class="content-header">
+                    <button class="icon-btn home-btn" id="homeBtn" title="Return home" aria-label="Return home">&#8962;</button>
                     <div>
                         <div class="eyebrow" id="viewEyebrow">Operations</div>
-                        <h1 id="viewTitle">NOTAM</h1>
-                        <p class="subhead" id="viewSubhead">Operational notices and airline advisories.</p>
+                        <h1 id="viewTitle">Dashboard</h1>
+                        <p class="subhead" id="viewSubhead">Select an EFB function.</p>
                     </div>
-                    <button class="refresh-btn" id="refreshBtn">REFRESH</button>
+                    <div class="header-actions">
+                        <button class="refresh-btn" id="refreshBtn">REFRESH</button>
+                        <button class="logout-btn header-logout" id="logoutBtn">LOG OUT</button>
+                    </div>
                 </div>
                 <div class="panel" id="mainPanel">
                     <p class="empty">Loading dashboard...</p>
