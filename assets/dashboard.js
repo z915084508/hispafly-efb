@@ -27,7 +27,7 @@
             { view: "notams", label: "NOTAM", subhead: "Operational notices", icon: "assets/app-icons/notams.png" },
             { view: "profile", label: "Pilot Profile", subhead: "Identity and rank", icon: "assets/app-icons/profile.png" },
             { view: "flightCenter", label: "Flight Center", subhead: "Bookings and OFP", icon: "assets/app-icons/flight-center.png" },
-            { view: "weather", label: "WX Info", subhead: "METAR by ICAO", icon: "assets/app-icons/weather.png" },
+            { view: "weather", label: "WX Info", subhead: "METAR and TAFOR by ICAO", icon: "assets/app-icons/weather.png" },
             { view: "telex", label: "TELEX", subhead: "Hoppie ACARS", icon: "assets/app-icons/telex.png" },
             { view: "cdmAirport", label: "CDM Airport", subhead: "Airport queue", icon: "assets/app-icons/cdm-airport.png" },
             { view: "liveMap", label: "Live Map", subhead: "VAMSYS live ops", icon: "assets/app-icons/live-map.png" },
@@ -580,13 +580,13 @@
                                 <label for="wxIcaoInput">Airport ICAO</label>
                                 <input id="wxIcaoInput" autocomplete="off" maxlength="4" placeholder="LEMD">
                             </div>
-                            <button class="primary-btn" id="wxRequestBtn">REQUEST METAR</button>
+                            <button class="primary-btn" id="wxRequestBtn">REQUEST WX</button>
                         </div>
                     </section>
                     <section class="card wide">
-                        <h2>METAR Result</h2>
+                        <h2>Weather Reports</h2>
                         <div id="wxResult">
-                            <p class="empty">Enter an ICAO code to request the latest METAR.</p>
+                            <p class="empty">Enter an ICAO code to request the latest METAR and TAFOR.</p>
                         </div>
                     </section>
                 </div>
@@ -610,7 +610,7 @@
                 return;
             }
 
-            result.innerHTML = `<p class="empty">Requesting METAR for ${escapeHtml(icao)}...</p>`;
+            result.innerHTML = `<p class="empty">Requesting METAR and TAFOR for ${escapeHtml(icao)}...</p>`;
             try {
                 const res = await fetch(`/api/checkwx?icao=${encodeURIComponent(icao)}`);
                 const json = await res.json();
@@ -622,8 +622,38 @@
         }
 
         function renderWeatherData(payload) {
-            const report = Array.isArray(payload.data) ? payload.data[0] : payload.data || payload;
-            if (!report) return `<p class="empty">No METAR returned.</p>`;
+            const metarPayload = payload?.metar || payload;
+            const tafPayload = payload?.taf || null;
+            const report = getFirstWeatherReport(metarPayload);
+            const tafReport = getFirstWeatherReport(tafPayload);
+            if (!report && !tafReport) return `<p class="empty">No weather reports returned.</p>`;
+            const metarHtml = report && !report.error
+                ? renderMetarReport(report)
+                : renderRawWeatherReport("METAR", report, "No METAR returned.");
+            const tafHtml = renderRawWeatherReport("TAFOR", tafReport, "No TAFOR returned.");
+
+            return `${metarHtml}${tafHtml}`;
+        }
+
+        function getFirstWeatherReport(payload) {
+            if (!payload) return null;
+            if (payload.error) return payload;
+            return Array.isArray(payload.data) ? payload.data[0] : payload.data || payload;
+        }
+
+        function renderRawWeatherReport(title, report, emptyMessage) {
+            const station = report?.icao || report?.station?.icao || title;
+            const rawText = report?.raw_text || report?.raw || report?.text || report?.message;
+
+            return `
+                <div class="weather-report">
+                    <h3>${escapeHtml(formatValue(station, title))} <span class="wx-badge">${escapeHtml(title)}</span></h3>
+                    <p class="empty">${escapeHtml(formatValue(rawText, emptyMessage))}</p>
+                </div>
+            `;
+        }
+
+        function renderMetarReport(report) {
             const wind = report.wind
                 ? `${formatValue(report.wind.degrees, "VRB")} / ${formatValue(report.wind.speed_kts)} kt${report.wind.gust_kts ? ` G${report.wind.gust_kts}` : ""}`
                 : "N/A";

@@ -204,6 +204,16 @@
             font-size: 11px;
         }
 
+        .footer-note a {
+            color: rgba(255,255,255,0.58);
+            text-decoration: none;
+        }
+
+        .footer-note a:hover {
+            color: rgba(255,255,255,0.86);
+            text-decoration: underline;
+        }
+
         @media (max-width: 900px) {
             .device {
                 min-height: 100vh;
@@ -349,7 +359,11 @@
                     <p class="subtitle">Electronic Flight Bag</p>
                     <div class="accent" aria-hidden="true"></div>
                     <button class="login-btn" id="loginBtn">Login with VAMSYS</button>
-                    <p class="footer-note">Pilot access powered by VAMSYS</p>
+                    <div class="footer-note">
+                        Pilot access powered by VAMSYS ·
+                        <a href="privacy-policy.html">Privacy</a> ·
+                        <a href="intellectual-property.html">IP Notice</a>
+                    </div>
                 </div>
             </div>
         </section>
