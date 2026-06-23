@@ -915,6 +915,219 @@
             font-weight: 800;
         }
 
+        .dictionary-layout {
+            display: grid;
+            gap: 12px;
+        }
+
+        .dictionary-searchbar {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 150px;
+            gap: 12px;
+            align-items: end;
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 14px;
+            background: rgba(0,0,0,0.18);
+            padding: 14px;
+        }
+
+        .dictionary-count {
+            display: grid;
+            gap: 3px;
+            min-height: 48px;
+            align-content: center;
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.05);
+            padding: 8px 10px;
+            text-align: center;
+        }
+
+        .dictionary-count strong {
+            color: #fff;
+            font-size: 20px;
+            line-height: 1;
+        }
+
+        .dictionary-count span {
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        .dictionary-categories {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 2px;
+        }
+
+        .dictionary-chip {
+            flex: 0 0 auto;
+            min-height: 36px;
+            border: 1px solid rgba(255,255,255,0.11);
+            border-radius: 999px;
+            background: rgba(255,255,255,0.06);
+            color: rgba(255,255,255,0.78);
+            padding: 0 12px;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .dictionary-chip.active,
+        .dictionary-chip:hover {
+            border-color: rgba(255,196,0,0.42);
+            background: rgba(255,196,0,0.12);
+            color: #fff;
+        }
+
+        .dictionary-workbench {
+            display: grid;
+            grid-template-columns: minmax(250px, 34%) minmax(0, 1fr);
+            gap: 14px;
+            min-height: 560px;
+        }
+
+        .dictionary-list,
+        .dictionary-detail {
+            min-height: 560px;
+            max-height: 68vh;
+            overflow: auto;
+            border: 1px solid rgba(255,255,255,0.11);
+            border-radius: 14px;
+            background: rgba(0,0,0,0.18);
+            padding: 12px;
+        }
+
+        .dictionary-list {
+            display: grid;
+            align-content: start;
+            gap: 8px;
+        }
+
+        .dictionary-item {
+            display: grid;
+            gap: 4px;
+            width: 100%;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            padding: 10px;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .dictionary-item:hover,
+        .dictionary-item.active {
+            border-color: rgba(255,196,0,0.38);
+            background: rgba(255,196,0,0.09);
+        }
+
+        .dictionary-item span {
+            color: var(--yellow);
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .dictionary-item strong {
+            font-size: 14px;
+        }
+
+        .dictionary-item small {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .dictionary-detail {
+            display: grid;
+            align-content: start;
+            gap: 12px;
+        }
+
+        .dictionary-detail-head {
+            border-bottom: 1px solid rgba(255,255,255,0.10);
+            padding-bottom: 12px;
+        }
+
+        .dictionary-detail-head span {
+            color: var(--yellow);
+            font-size: 11px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .dictionary-detail-head h2 {
+            margin: 5px 0;
+            color: #fff;
+            font-size: 28px;
+        }
+
+        .dictionary-detail-head p,
+        .dictionary-block p {
+            color: rgba(255,255,255,0.78);
+            line-height: 1.5;
+        }
+
+        .dictionary-block {
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.045);
+            padding: 12px;
+        }
+
+        .dictionary-block h3 {
+            color: #fff;
+            font-size: 13px;
+            margin-bottom: 7px;
+        }
+
+        .dictionary-example {
+            font-family: "Consolas", "Courier New", monospace;
+            color: #fff !important;
+        }
+
+        .inline-link {
+            display: inline-flex;
+            margin-top: 8px;
+            color: var(--yellow);
+            font-weight: 800;
+            text-decoration: none;
+        }
+
+        .inline-link:hover {
+            text-decoration: underline;
+        }
+
+        .dictionary-related {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .dictionary-related span {
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 999px;
+            background: rgba(255,255,255,0.06);
+            color: rgba(255,255,255,0.76);
+            padding: 7px 10px;
+            font-size: 12px;
+        }
+
+        .dictionary-empty {
+            min-height: 240px;
+            display: grid;
+            place-items: center;
+            gap: 8px;
+            color: var(--muted);
+            text-align: center;
+        }
+
+        .dictionary-empty strong {
+            color: #fff;
+        }
+
         .windy-layout {
             display: grid;
             gap: 14px;
@@ -1849,6 +2062,8 @@
             .cdm-summary,
             .cdm-data-grid,
             .cdm-search-grid,
+            .dictionary-searchbar,
+            .dictionary-workbench,
             .live-map-toolbar,
             .live-map-stats,
             .windy-meta,
@@ -1868,6 +2083,16 @@
             .windy-frame {
                 height: 68vh;
                 min-height: 430px;
+            }
+
+            .dictionary-list,
+            .dictionary-detail {
+                min-height: 360px;
+                max-height: none;
+            }
+
+            .dictionary-detail-head h2 {
+                font-size: 22px;
             }
 
             .navigraph-airport-head {

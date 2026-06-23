@@ -15,6 +15,9 @@
         let navigraphImageUrl = null;
         let windyLocation = { label: "Madrid Area", lat: 40.4, lon: -3.7, zoom: 5 };
         let windySearchStatus = "Default radar area";
+        let dictionaryQuery = "";
+        let dictionaryCategory = "All";
+        let selectedDictionaryTerm = null;
 
         if (!accessToken) {
             window.location.href = "index.html";
@@ -39,10 +42,19 @@
                     { view: "windy", label: "WINDY", subhead: "Weather radar", icon: "assets/app-icons/windy-radar.svg" }
                 ]
             },
+            {
+                folder: "tools",
+                label: "TOOLS",
+                subhead: "Charts and dictionary",
+                icon: "assets/app-icons/dictionary.svg",
+                apps: [
+                    { view: "dictionary", label: "Dictionary", subhead: "Pilot terminology", icon: "assets/app-icons/dictionary.svg" },
+                    { view: "navigraph", label: "NAVIGRAPH", subhead: "Airport charts", icon: "assets/app-icons/navigraph.svg" }
+                ]
+            },
             { view: "telex", label: "TELEX", subhead: "Hoppie ACARS", icon: "assets/app-icons/telex.png" },
             { view: "cdmAirport", label: "CDM Airport", subhead: "Airport queue", icon: "assets/app-icons/cdm-airport.png" },
-            { view: "liveMap", label: "Live Map", subhead: "VAMSYS live ops", icon: "assets/app-icons/live-map.png" },
-            { view: "navigraph", label: "NAVIGRAPH", subhead: "Airport charts", icon: "assets/app-icons/navigraph.svg" }
+            { view: "liveMap", label: "Live Map", subhead: "VAMSYS live ops", icon: "assets/app-icons/live-map.png" }
         ];
 
         window.addEventListener("DOMContentLoaded", () => {
@@ -96,6 +108,7 @@
                 profile: ["Pilot", "Pilot Profile", "Crew identity, network IDs, rank, and flight time."],
                 pirepLogbook: ["Logbook", "PIREP Logbook", "Select a PIREP to open the full pilot report."],
                 flightCenter: ["Flights", "Flight Center", "Current bookings and dispatch documents."],
+                dictionary: ["Pilot Tools", "Terminology Dictionary", "Search VATSIM Spain, phraseology, and safety terms."],
                 weather: ["Weather", "WX Info", "Request weather information by airport ICAO."],
                 windy: ["Weather", "WINDY Radar", "Interactive weather radar and forecast layers."],
                 telex: ["ACARS", "TELEX", "Hoppie ACARS style logon, inbox, and telex compose station."],
@@ -129,6 +142,8 @@
                 } else if (currentView === "flightCenter") {
                     if (!bookingsData || force) bookingsData = await loadBookings();
                     renderFlightCenter();
+                } else if (currentView === "dictionary") {
+                    renderDictionary();
                 } else if (currentView === "weather") {
                     renderWeather();
                 } else if (currentView === "windy") {
@@ -645,6 +660,149 @@
                 </div>
             `;
             bindBookingButtons();
+        }
+
+        function renderDictionary() {
+            const entries = getDictionaryEntries();
+            const categories = ["All", ...new Set(entries.map((entry) => entry.category))];
+            const filtered = filterDictionaryEntries(entries);
+            const selected = selectedDictionaryTerm
+                ? filtered.find((entry) => entry.term === selectedDictionaryTerm) || filtered[0]
+                : filtered[0];
+            selectedDictionaryTerm = selected?.term || null;
+
+            document.getElementById("mainPanel").innerHTML = `
+                <section class="dictionary-layout">
+                    <div class="dictionary-searchbar">
+                        <div class="field" style="margin:0;">
+                            <label for="dictionarySearchInput">Search terminology</label>
+                            <input id="dictionarySearchInput" autocomplete="off" value="${escapeHtml(dictionaryQuery)}" placeholder="CTOT, UNICOM, LEMD, wake turbulence">
+                        </div>
+                        <div class="dictionary-count">
+                            <strong>${escapeHtml(filtered.length)}</strong>
+                            <span>of ${escapeHtml(entries.length)} terms</span>
+                        </div>
+                    </div>
+                    <div class="dictionary-categories" aria-label="Dictionary categories">
+                        ${categories.map((category) => `
+                            <button class="dictionary-chip ${category === dictionaryCategory ? "active" : ""}" data-dictionary-category="${escapeHtml(category)}">
+                                ${escapeHtml(category)}
+                            </button>
+                        `).join("")}
+                    </div>
+                    <div class="dictionary-workbench">
+                        <aside class="dictionary-list" id="dictionaryList">
+                            ${renderDictionaryList(filtered)}
+                        </aside>
+                        <section class="dictionary-detail" id="dictionaryDetail">
+                            ${renderDictionaryDetail(selected)}
+                        </section>
+                    </div>
+                </section>
+            `;
+
+            const input = document.getElementById("dictionarySearchInput");
+            input.addEventListener("input", () => {
+                dictionaryQuery = input.value;
+                selectedDictionaryTerm = null;
+                renderDictionary();
+                const nextInput = document.getElementById("dictionarySearchInput");
+                nextInput.focus();
+                nextInput.setSelectionRange(nextInput.value.length, nextInput.value.length);
+            });
+
+            document.querySelectorAll("[data-dictionary-category]").forEach((button) => {
+                button.addEventListener("click", () => {
+                    dictionaryCategory = button.dataset.dictionaryCategory;
+                    selectedDictionaryTerm = null;
+                    renderDictionary();
+                });
+            });
+
+            document.querySelectorAll("[data-dictionary-term]").forEach((button) => {
+                button.addEventListener("click", () => {
+                    selectedDictionaryTerm = button.dataset.dictionaryTerm;
+                    renderDictionary();
+                });
+            });
+        }
+
+        function getDictionaryEntries() {
+            return Array.isArray(window.HPF_TERMINOLOGY_ENTRIES) ? window.HPF_TERMINOLOGY_ENTRIES : [];
+        }
+
+        function filterDictionaryEntries(entries) {
+            const query = dictionaryQuery.trim().toLowerCase();
+            return entries.filter((entry) => {
+                const categoryMatch = dictionaryCategory === "All" || entry.category === dictionaryCategory;
+                if (!categoryMatch) return false;
+                if (!query) return true;
+                const haystack = [
+                    entry.term,
+                    entry.fullName,
+                    entry.category,
+                    entry.sourceGroup,
+                    entry.definition,
+                    entry.spanish,
+                    entry.vatsimUse,
+                    entry.example,
+                    ...(entry.tags || [])
+                ].join(" ").toLowerCase();
+                return haystack.includes(query);
+            });
+        }
+
+        function renderDictionaryList(entries) {
+            if (!entries.length) {
+                return `<p class="empty">No terminology matches this search.</p>`;
+            }
+
+            return entries.map((entry) => `
+                <button class="dictionary-item ${entry.term === selectedDictionaryTerm ? "active" : ""}" data-dictionary-term="${escapeHtml(entry.term)}">
+                    <span>${escapeHtml(entry.category)}</span>
+                    <strong>${escapeHtml(entry.term)}</strong>
+                    <small>${escapeHtml(entry.fullName || entry.sourceGroup)}</small>
+                </button>
+            `).join("");
+        }
+
+        function renderDictionaryDetail(entry) {
+            if (!entry) {
+                return `<div class="dictionary-empty"><strong>No term selected</strong><span>Search or choose a category to begin.</span></div>`;
+            }
+
+            const related = Array.isArray(entry.related) && entry.related.length
+                ? entry.related.map((item) => `<span>${escapeHtml(item)}</span>`).join("")
+                : `<span>${escapeHtml(entry.category)}</span><span>${escapeHtml(entry.sourceGroup)}</span>`;
+
+            return `
+                <div class="dictionary-detail-head">
+                    <span>${escapeHtml(entry.category)}</span>
+                    <h2>${escapeHtml(entry.term)}</h2>
+                    ${entry.fullName ? `<p>${escapeHtml(entry.fullName)}</p>` : ""}
+                </div>
+                <div class="dictionary-block">
+                    <h3>Definition</h3>
+                    <p>${escapeHtml(entry.definition)}</p>
+                </div>
+                <div class="dictionary-block">
+                    <h3>Uso en VATSIM Spain</h3>
+                    <p>${escapeHtml(entry.spanish)}</p>
+                    <p>${escapeHtml(entry.vatsimUse)}</p>
+                </div>
+                <div class="dictionary-block">
+                    <h3>Example</h3>
+                    <p class="dictionary-example">${escapeHtml(entry.example)}</p>
+                </div>
+                <div class="dictionary-block">
+                    <h3>Source</h3>
+                    <p>${escapeHtml(entry.sourceGroup)}</p>
+                    ${entry.sourceUrl ? `<a class="inline-link" href="${escapeHtml(entry.sourceUrl)}" target="_blank" rel="noopener noreferrer">Open source reference</a>` : ""}
+                </div>
+                <div class="dictionary-related">
+                    ${related}
+                </div>
+            `;
         }
 
         function renderWeather() {

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Pilot dictionary">
+  <defs>
+    <linearGradient id="dict-bg" x1="18" y1="12" x2="110" y2="119" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#29415c"/>
+      <stop offset="0.56" stop-color="#18263a"/>
+      <stop offset="1" stop-color="#101827"/>
+    </linearGradient>
+    <linearGradient id="dict-page" x1="36" y1="23" x2="93" y2="103" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#cbd5e1"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#dict-bg)"/>
+  <path d="M37 22h46c8 0 14 6 14 14v70H45c-8 0-14-6-14-14V28c0-3 3-6 6-6Z" fill="#0d1423"/>
+  <path d="M43 22h43c6 0 11 5 11 11v66H45c-5 0-9-4-9-9V29c0-4 3-7 7-7Z" fill="url(#dict-page)"/>
+  <path d="M45 31h40" stroke="#27364c" stroke-width="5" stroke-linecap="round"/>
+  <path d="M45 47h32" stroke="#27364c" stroke-opacity="0.6" stroke-width="4" stroke-linecap="round"/>
+  <path d="M45 61h38" stroke="#27364c" stroke-opacity="0.45" stroke-width="4" stroke-linecap="round"/>
+  <path d="M45 75h28" stroke="#27364c" stroke-opacity="0.35" stroke-width="4" stroke-linecap="round"/>
+  <path d="M35 91h62" stroke="#ffc400" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="82" cy="80" r="18" fill="#101827" stroke="#72f0a3" stroke-width="5"/>
+  <path d="m94 92 13 13" stroke="#72f0a3" stroke-width="6" stroke-linecap="round"/>
+  <path d="M74 80h16M82 72v16" stroke="#e8fff3" stroke-width="4" stroke-linecap="round"/>
+</svg>
