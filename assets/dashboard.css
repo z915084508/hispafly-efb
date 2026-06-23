@@ -827,6 +827,48 @@
             font-weight: 800;
         }
 
+        .windy-layout {
+            display: grid;
+            gap: 14px;
+        }
+
+        .windy-toolbar {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 14px;
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 14px;
+            background: rgba(0,0,0,0.20);
+            padding: 14px;
+        }
+
+        .windy-toolbar h2 {
+            margin-bottom: 8px;
+        }
+
+        .windy-meta {
+            grid-template-columns: repeat(3, minmax(0, auto));
+        }
+
+        .windy-frame {
+            position: relative;
+            width: 100%;
+            height: min(72vh, 760px);
+            min-height: 560px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 16px;
+            background: rgba(2,5,10,0.72);
+        }
+
+        .windy-frame iframe {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+
         .cdm-summary {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -1705,11 +1747,22 @@
             .cdm-search-grid,
             .live-map-toolbar,
             .live-map-stats,
+            .windy-meta,
             .navigraph-layout,
             .navigraph-workbench,
             .navigraph-meta,
             .weather-form {
                 grid-template-columns: 1fr;
+            }
+
+            .windy-toolbar {
+                display: grid;
+                align-items: stretch;
+            }
+
+            .windy-frame {
+                height: 68vh;
+                min-height: 430px;
             }
 
             .navigraph-airport-head {

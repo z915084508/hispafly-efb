@@ -28,6 +28,7 @@
             { view: "profile", label: "Pilot Profile", subhead: "Identity and rank", icon: "assets/app-icons/profile.png" },
             { view: "flightCenter", label: "Flight Center", subhead: "Bookings and OFP", icon: "assets/app-icons/flight-center.png" },
             { view: "weather", label: "WX Info", subhead: "METAR and TAFOR by ICAO", icon: "assets/app-icons/weather.png" },
+            { view: "windy", label: "WINDY", subhead: "Weather radar", icon: "assets/app-icons/windy-radar.svg" },
             { view: "telex", label: "TELEX", subhead: "Hoppie ACARS", icon: "assets/app-icons/telex.png" },
             { view: "cdmAirport", label: "CDM Airport", subhead: "Airport queue", icon: "assets/app-icons/cdm-airport.png" },
             { view: "liveMap", label: "Live Map", subhead: "VAMSYS live ops", icon: "assets/app-icons/live-map.png" },
@@ -86,6 +87,7 @@
                 pirepLogbook: ["Logbook", "PIREP Logbook", "Select a PIREP to open the full pilot report."],
                 flightCenter: ["Flights", "Flight Center", "Current bookings and dispatch documents."],
                 weather: ["Weather", "WX Info", "Request weather information by airport ICAO."],
+                windy: ["Weather", "WINDY Radar", "Interactive weather radar and forecast layers."],
                 telex: ["ACARS", "TELEX", "Hoppie ACARS style logon, inbox, and telex compose station."],
                 cdmAirport: ["Airport CDM", "CDM Airport Status", "Airport departure queue and ATFCM status."],
                 liveMap: ["Live Ops", "Live Flight Map", "Real-time VAMSYS active flight positions."],
@@ -119,6 +121,8 @@
                     renderFlightCenter();
                 } else if (currentView === "weather") {
                     renderWeather();
+                } else if (currentView === "windy") {
+                    renderWindy();
                 } else if (currentView === "telex") {
                     if (!bookingsData || force) bookingsData = await loadBookings();
                     renderTelex();
@@ -598,6 +602,58 @@
             input.addEventListener("keydown", (event) => {
                 if (event.key === "Enter") requestWeather();
             });
+        }
+
+        function renderWindy() {
+            const windyUrl = getWindyRadarUrl();
+            document.getElementById("mainPanel").innerHTML = `
+                <section class="windy-layout">
+                    <div class="windy-toolbar">
+                        <div>
+                            <h2>WINDY Weather Radar</h2>
+                            <div class="meta windy-meta">
+                                <span>Overlay: Radar</span>
+                                <span>Wind: kt</span>
+                                <span>Temperature: C</span>
+                            </div>
+                        </div>
+                        <a class="inline-btn" href="${escapeHtml(windyUrl)}" target="_blank" rel="noopener noreferrer">OPEN WINDY</a>
+                    </div>
+                    <div class="windy-frame">
+                        <iframe
+                            title="WINDY weather radar"
+                            src="${escapeHtml(windyUrl)}"
+                            loading="lazy"
+                            referrerpolicy="no-referrer-when-downgrade"
+                            allowfullscreen>
+                        </iframe>
+                    </div>
+                </section>
+            `;
+        }
+
+        function getWindyRadarUrl() {
+            const params = new URLSearchParams({
+                lat: "40.4",
+                lon: "-3.7",
+                detailLat: "40.4",
+                detailLon: "-3.7",
+                width: "650",
+                height: "450",
+                zoom: "5",
+                level: "surface",
+                overlay: "radar",
+                product: "radar",
+                marker: "true",
+                calendar: "now",
+                type: "map",
+                location: "coordinates",
+                metricWind: "kt",
+                metricTemp: "C",
+                radarRange: "-1"
+            });
+
+            return `https://embed.windy.com/embed2.html?${params.toString()}`;
         }
 
         async function requestWeather() {
