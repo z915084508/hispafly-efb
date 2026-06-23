@@ -743,9 +743,11 @@
                     entry.category,
                     entry.sourceGroup,
                     entry.definition,
-                    entry.spanish,
+                    entry.definitionEs,
                     entry.vatsimUse,
+                    entry.vatsimUseEs,
                     entry.example,
+                    entry.exampleEs,
                     ...(entry.tags || [])
                 ].join(" ").toLowerCase();
                 return haystack.includes(query);
@@ -782,17 +784,19 @@
                     ${entry.fullName ? `<p>${escapeHtml(entry.fullName)}</p>` : ""}
                 </div>
                 <div class="dictionary-block">
-                    <h3>Definition</h3>
+                    <h3>Definition / Definicion</h3>
                     <p>${escapeHtml(entry.definition)}</p>
+                    <p class="dictionary-es">${escapeHtml(entry.definitionEs || "")}</p>
                 </div>
                 <div class="dictionary-block">
-                    <h3>Uso en VATSIM Spain</h3>
-                    <p>${escapeHtml(entry.spanish)}</p>
+                    <h3>Use on VATSIM Spain / Uso en VATSIM Spain</h3>
                     <p>${escapeHtml(entry.vatsimUse)}</p>
+                    <p class="dictionary-es">${escapeHtml(entry.vatsimUseEs || "")}</p>
                 </div>
                 <div class="dictionary-block">
-                    <h3>Example</h3>
+                    <h3>Example / Ejemplo</h3>
                     <p class="dictionary-example">${escapeHtml(entry.example)}</p>
+                    <p class="dictionary-example dictionary-es">${escapeHtml(entry.exampleEs || "")}</p>
                 </div>
                 <div class="dictionary-block">
                     <h3>Source</h3>

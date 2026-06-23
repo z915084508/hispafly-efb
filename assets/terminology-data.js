@@ -1,6 +1,5 @@
 (function () {
     const sourceLinks = {
-        "VATSIM Spain": "https://vatsimspain.es/",
         "VATSIM Spain Biblioteca": "https://biblioteca.vatsimspain.es/",
         "VATSIM": "https://vatsim.net/docs/policy/code-of-conduct/",
         "EUROCONTROL / SKYbrary": "https://skybrary.aero/",
@@ -9,9 +8,9 @@
 
     const groups = [
         {
-            category: "VATSIM Spain",
-            sourceGroup: "VATSIM Spain",
-            terms: "VATSPA,vACC Spain,VATSIM Spain,Biblioteca,Dashboard,EVA Escuela Virtual,Discord,Controller booking,Active controllers,Event briefing,CPT,Solo validation,Visiting controller,Spanish vACC,LECM,LECB,LECS,GCCC,Madrid Control,Barcelona Control,Canarias Control,Sevilla Control,Palma TACC,LEMD Madrid,LEBL Barcelona,LEPA Palma,LEMG Malaga,LEVC Valencia,LEAL Alicante,LEZL Sevilla,GCLP Gran Canaria,GCTS Tenerife Sur,GCXO Tenerife Norte,GCRR Lanzarote,GCFV Fuerteventura,LEBB Bilbao,LEST Santiago,LEXJ Santander,LESO San Sebastian,LEAS Asturias,LECO A Coruna,LEJR Jerez,LEIB Ibiza,LEMH Menorca,LEAM Almeria,LEGR Granada,LERS Reus,LEVT Vitoria,LEXJ Approach,LEMD Ground,LEBL Tower"
+            category: "Flight Operations",
+            sourceGroup: "VATSIM Spain Biblioteca",
+            terms: "Preflight briefing,Departure briefing,Approach briefing,Descent planning,Fuel planning,Alternate airport,Destination alternate,Takeoff performance,Landing performance,Flex temperature,Derated takeoff,Cost index,Payload,Zero fuel weight,Block fuel,Taxi fuel,Trip fuel,Contingency fuel,Final reserve fuel,Extra fuel,Minimum fuel,Mayday fuel,Flight release,Operational flight plan,Route validation,Navlog,Step climb,Optimum flight level,Maximum flight level,Cruise speed,Managed speed,Selected speed,Speed intervention,Altitude intervention,Heading select,LNAV,VNAV,Vertical speed,Flight director,Autopilot,Autothrottle,Flight mode annunciator,Stabilised criteria,Landing checklist,Before takeoff checklist,After landing checklist,Taxi checklist,Runway briefing,Rejected takeoff briefing"
         },
         {
             category: "VATSIM Network",
@@ -67,7 +66,7 @@
 
     function makeDefinition(term, category) {
         const lower = category.toLowerCase();
-        if (category === "VATSIM Spain") return `${term} is a VATSIM Spain reference used when flying, planning, or communicating in Spanish virtual airspace.`;
+        if (category === "Flight Operations") return `${term} is a cockpit or dispatch concept used to prepare, manage, or monitor a flight.`;
         if (category === "VATSIM Network") return `${term} is a VATSIM network concept pilots should understand before connecting or operating online.`;
         if (category === "ATC Phraseology") return `${term} is a radio phrase or instruction used to keep pilot and controller communication short and unambiguous.`;
         if (category === "IFR Operations") return `${term} is an IFR procedure or clearance item commonly encountered during online instrument flights.`;
@@ -76,19 +75,26 @@
         if (category === "Weather") return `${term} is a weather term pilots use to interpret METAR, TAF, radar, and operational conditions.`;
         if (category === "CPDLC / Hoppie") return `${term} is a datalink or telex concept used for text-based operational messages.`;
         if (category === "Airport Operations") return `${term} is an airport movement or runway-operation term used from stand to airborne or after landing.`;
+        if (category === "Navigation") return `${term} is a navigation term used for route tracking, instrument procedures, or aircraft guidance.`;
         return `${term} is a ${lower} term useful for VATSIM Spain pilot operations.`;
     }
 
-    function makeSpanish(term, category) {
-        if (category === "ATC Phraseology") return `Frase o instruccion que el piloto debe entender y colacionar correctamente cuando proceda.`;
-        if (category === "Weather") return `Termino meteorologico usado para interpretar condiciones reales durante el vuelo online.`;
-        if (category === "EUROCONTROL / SKYbrary") return `Concepto operacional o de seguridad frecuente en el entorno europeo.`;
-        if (category === "VATSIM Spain") return `Referencia especifica para pilotos que vuelan en la comunidad y el espacio aereo virtual de Espana.`;
-        return `Concepto util para operaciones de pilotos en VATSIM Spain.`;
+    function makeDefinitionEs(term, category) {
+        if (category === "Flight Operations") return `${term} es un concepto de cabina u operaciones usado para preparar, gestionar o supervisar un vuelo.`;
+        if (category === "VATSIM Network") return `${term} es un concepto de la red VATSIM que el piloto debe conocer antes de conectarse u operar online.`;
+        if (category === "ATC Phraseology") return `${term} es una frase o instruccion radiotelefonica usada para que la comunicacion sea breve y clara.`;
+        if (category === "IFR Operations") return `${term} es un procedimiento o elemento de autorizacion IFR frecuente durante vuelos instrumentales online.`;
+        if (category === "Spain Airspace") return `${term} describe un espacio aereo, sector o area operativa relevante para volar en Espana.`;
+        if (category === "EUROCONTROL / SKYbrary") return `${term} es un concepto operacional, de seguridad o gestion de afluencia usado en el entorno europeo.`;
+        if (category === "Weather") return `${term} es un termino meteorologico usado para interpretar METAR, TAF, radar y condiciones operativas.`;
+        if (category === "CPDLC / Hoppie") return `${term} es un concepto de enlace de datos o telex usado para mensajes operacionales por texto.`;
+        if (category === "Airport Operations") return `${term} es un termino de movimiento aeroportuario o pista usado desde el puesto hasta el despegue o tras el aterrizaje.`;
+        if (category === "Navigation") return `${term} es un termino de navegacion usado para seguimiento de ruta, procedimientos instrumentales o guiado del avion.`;
+        return `${term} es un termino util para operaciones de pilotos en VATSIM Spain.`;
     }
 
     function makeUse(term, category) {
-        if (category === "VATSIM Spain") return `Use it to understand local Spain vACC procedures, controller names, airport briefings, or event instructions.`;
+        if (category === "Flight Operations") return `Use it during flight preparation, cockpit setup, checklist flow, or operational decision-making.`;
         if (category === "VATSIM Network") return `Use it to operate correctly on the VATSIM network and avoid disrupting active ATC or nearby traffic.`;
         if (category === "ATC Phraseology") return `Listen for it on frequency, act only when the clearance or instruction applies to your callsign, and read back safety-critical items.`;
         if (category === "IFR Operations") return `Check charts and your FMS before accepting or flying this item under Spanish or European ATC.`;
@@ -97,7 +103,22 @@
         if (category === "Weather") return `Use it during preflight, approach planning, and when comparing simulator weather with current real-world conditions.`;
         if (category === "CPDLC / Hoppie") return `Use it when sending or receiving Hoppie/CPDLC style telex messages in supported online operations.`;
         if (category === "Airport Operations") return `Use it on delivery, ground, tower, and apron frequencies while moving around Spanish airports.`;
+        if (category === "Navigation") return `Use it when setting up the FMS, flying a route, briefing an approach, or complying with ATC navigation instructions.`;
         return `Use it as quick reference before transmitting or accepting an instruction.`;
+    }
+
+    function makeUseEs(term, category) {
+        if (category === "Flight Operations") return `Usalo durante la preparacion del vuelo, configuracion de cabina, listas de comprobacion o toma de decisiones operativas.`;
+        if (category === "VATSIM Network") return `Usalo para operar correctamente en VATSIM y evitar interferir con ATC activo u otro trafico.`;
+        if (category === "ATC Phraseology") return `Escuchalo en frecuencia, actua solo si la autorizacion o instruccion es para tu indicativo y colaciona los elementos criticos.`;
+        if (category === "IFR Operations") return `Comprueba cartas y FMS antes de aceptar o volar este elemento bajo ATC en Espana o Europa.`;
+        if (category === "Spain Airspace") return `Usalo para saber a que dependencia llamar y que espacio aereo o area aeroportuaria estas entrando.`;
+        if (category === "EUROCONTROL / SKYbrary") return `En eventos o trafico denso, ayuda a entender restricciones de flujo, seguridad y operacion.`;
+        if (category === "Weather") return `Usalo en la preparacion, briefing de aproximacion y comparacion de la meteorologia del simulador con condiciones reales.`;
+        if (category === "CPDLC / Hoppie") return `Usalo al enviar o recibir mensajes tipo Hoppie/CPDLC en operaciones online compatibles.`;
+        if (category === "Airport Operations") return `Usalo en frecuencias de delivery, ground, tower y apron durante movimientos en aeropuertos espanoles.`;
+        if (category === "Navigation") return `Usalo al configurar el FMS, volar una ruta, preparar una aproximacion o cumplir instrucciones de navegacion de ATC.`;
+        return `Usalo como referencia rapida antes de transmitir o aceptar una instruccion.`;
     }
 
     function makeExample(term, category) {
@@ -105,8 +126,19 @@
         if (category === "Weather") return `Check ${term} before departure and before approach briefing.`;
         if (category === "CPDLC / Hoppie") return `HSP123: ${term}.`;
         if (category === "Airport Operations") return `HSP123, ${term.toLowerCase()} as instructed.`;
-        if (category === "VATSIM Spain") return `HSP123 operating with ${term} information available.`;
+        if (category === "Flight Operations") return `Review ${term} during the cockpit briefing.`;
+        if (category === "Navigation") return `Verify ${term} against the chart and FMS before flying the procedure.`;
         return `Review ${term} before flying in busy VATSIM Spain airspace.`;
+    }
+
+    function makeExampleEs(term, category) {
+        if (category === "ATC Phraseology") return `"${term}, HSP123."`;
+        if (category === "Weather") return `Comprueba ${term} antes de la salida y antes del briefing de aproximacion.`;
+        if (category === "CPDLC / Hoppie") return `HSP123: ${term}.`;
+        if (category === "Airport Operations") return `HSP123, ${term.toLowerCase()} segun instruccion.`;
+        if (category === "Flight Operations") return `Revisa ${term} durante el briefing de cabina.`;
+        if (category === "Navigation") return `Verifica ${term} con la carta y el FMS antes de volar el procedimiento.`;
+        return `Revisa ${term} antes de volar en espacio aereo ocupado de VATSIM Spain.`;
     }
 
     window.HPF_TERMINOLOGY_ENTRIES = groups.flatMap((group) => group.terms.split(",").map((raw) => {
@@ -118,9 +150,11 @@
             sourceGroup: group.sourceGroup,
             sourceUrl: sourceLinks[group.sourceGroup],
             definition: makeDefinition(parsed.term, group.category),
-            spanish: makeSpanish(parsed.term, group.category),
+            definitionEs: makeDefinitionEs(parsed.term, group.category),
             vatsimUse: makeUse(parsed.term, group.category),
+            vatsimUseEs: makeUseEs(parsed.term, group.category),
             example: makeExample(parsed.term, group.category),
+            exampleEs: makeExampleEs(parsed.term, group.category),
             related: [],
             tags: [group.category.toLowerCase(), group.sourceGroup.toLowerCase(), parsed.term.toLowerCase()]
         };

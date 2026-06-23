@@ -1088,6 +1088,13 @@
             color: #fff !important;
         }
 
+        .dictionary-es {
+            margin-top: 8px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            padding-top: 8px;
+            color: rgba(255,255,255,0.66) !important;
+        }
+
         .inline-link {
             display: inline-flex;
             margin-top: 8px;
