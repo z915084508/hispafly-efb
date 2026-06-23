@@ -13,6 +13,8 @@
         let navigraphAirportData = null;
         let navigraphSelectedChart = null;
         let navigraphImageUrl = null;
+        let windyLocation = { label: "Madrid Area", lat: 40.4, lon: -3.7, zoom: 5 };
+        let windySearchStatus = "Default radar area";
 
         if (!accessToken) {
             window.location.href = "index.html";
@@ -27,8 +29,16 @@
             { view: "notams", label: "NOTAM", subhead: "Operational notices", icon: "assets/app-icons/notams.png" },
             { view: "profile", label: "Pilot Profile", subhead: "Identity and rank", icon: "assets/app-icons/profile.png" },
             { view: "flightCenter", label: "Flight Center", subhead: "Bookings and OFP", icon: "assets/app-icons/flight-center.png" },
-            { view: "weather", label: "WX Info", subhead: "METAR and TAFOR by ICAO", icon: "assets/app-icons/weather.png" },
-            { view: "windy", label: "WINDY", subhead: "Weather radar", icon: "assets/app-icons/windy-radar.svg" },
+            {
+                folder: "weather",
+                label: "WEATHER",
+                subhead: "WX and radar",
+                icon: "assets/app-icons/weather.png",
+                apps: [
+                    { view: "weather", label: "WX Info", subhead: "METAR and TAFOR by ICAO", icon: "assets/app-icons/weather.png" },
+                    { view: "windy", label: "WINDY", subhead: "Weather radar", icon: "assets/app-icons/windy-radar.svg" }
+                ]
+            },
             { view: "telex", label: "TELEX", subhead: "Hoppie ACARS", icon: "assets/app-icons/telex.png" },
             { view: "cdmAirport", label: "CDM Airport", subhead: "Airport queue", icon: "assets/app-icons/cdm-airport.png" },
             { view: "liveMap", label: "Live Map", subhead: "VAMSYS live ops", icon: "assets/app-icons/live-map.png" },
@@ -148,15 +158,7 @@
         function renderHome() {
             const name = buildName(pilotData || {}) || "HISPAFLY Pilot";
             const rank = getRank();
-            const apps = dashboardApps.map((app) => `
-                <button class="app-tile" data-home-view="${escapeHtml(app.view)}">
-                    <span class="app-icon" aria-hidden="true">
-                        <img src="${escapeHtml(app.icon)}" alt="">
-                    </span>
-                    <span class="app-label">${escapeHtml(app.label)}</span>
-                    <span class="app-subhead">${escapeHtml(app.subhead)}</span>
-                </button>
-            `).join("");
+            const apps = dashboardApps.map(renderHomeApp).join("");
 
             document.getElementById("mainPanel").innerHTML = `
                 <section class="home-screen">
@@ -174,11 +176,82 @@
                     <div class="app-grid" aria-label="EFB functions">
                         ${apps}
                     </div>
+                    <div id="appFolderHost"></div>
                 </section>
             `;
 
             document.querySelectorAll("[data-home-view]").forEach((button) => {
                 button.addEventListener("click", () => setView(button.dataset.homeView));
+            });
+            document.querySelectorAll("[data-home-folder]").forEach((button) => {
+                button.addEventListener("click", () => openAppFolder(button.dataset.homeFolder));
+            });
+        }
+
+        function renderHomeApp(app) {
+            if (app.folder) {
+                const miniIcons = app.apps.map((child) => `
+                    <span><img src="${escapeHtml(child.icon)}" alt=""></span>
+                `).join("");
+
+                return `
+                    <button class="app-tile" data-home-folder="${escapeHtml(app.folder)}">
+                        <span class="app-icon folder-icon" aria-hidden="true">
+                            ${miniIcons}
+                        </span>
+                        <span class="app-label">${escapeHtml(app.label)}</span>
+                        <span class="app-subhead">${escapeHtml(app.subhead)}</span>
+                    </button>
+                `;
+            }
+
+            return `
+                <button class="app-tile" data-home-view="${escapeHtml(app.view)}">
+                    <span class="app-icon" aria-hidden="true">
+                        <img src="${escapeHtml(app.icon)}" alt="">
+                    </span>
+                    <span class="app-label">${escapeHtml(app.label)}</span>
+                    <span class="app-subhead">${escapeHtml(app.subhead)}</span>
+                </button>
+            `;
+        }
+
+        function openAppFolder(folderId) {
+            const folder = dashboardApps.find((app) => app.folder === folderId);
+            const host = document.getElementById("appFolderHost");
+            if (!folder || !host) return;
+
+            const items = folder.apps.map((app) => `
+                <button class="folder-app-tile" data-folder-view="${escapeHtml(app.view)}">
+                    <span class="app-icon" aria-hidden="true">
+                        <img src="${escapeHtml(app.icon)}" alt="">
+                    </span>
+                    <span class="app-label">${escapeHtml(app.label)}</span>
+                    <span class="app-subhead">${escapeHtml(app.subhead)}</span>
+                </button>
+            `).join("");
+
+            host.innerHTML = `
+                <div class="app-folder-overlay" data-close-folder>
+                    <section class="app-folder-panel" aria-label="${escapeHtml(folder.label)} folder">
+                        <div class="app-folder-head">
+                            <strong>${escapeHtml(folder.label)}</strong>
+                            <button class="icon-btn" type="button" data-close-folder aria-label="Close folder">×</button>
+                        </div>
+                        <div class="app-folder-grid">
+                            ${items}
+                        </div>
+                    </section>
+                </div>
+            `;
+
+            host.querySelectorAll("[data-folder-view]").forEach((button) => {
+                button.addEventListener("click", () => setView(button.dataset.folderView));
+            });
+            host.querySelectorAll("[data-close-folder]").forEach((element) => {
+                element.addEventListener("click", (event) => {
+                    if (event.target === element || element.matches("button")) host.innerHTML = "";
+                });
             });
         }
 
@@ -605,19 +678,27 @@
         }
 
         function renderWindy() {
-            const windyUrl = getWindyRadarUrl();
+            const windyUrl = getWindyRadarUrl(windyLocation);
             document.getElementById("mainPanel").innerHTML = `
                 <section class="windy-layout">
                     <div class="windy-toolbar">
                         <div>
                             <h2>WINDY Weather Radar</h2>
                             <div class="meta windy-meta">
+                                <span>${escapeHtml(windyLocation.label)}</span>
                                 <span>Overlay: Radar</span>
                                 <span>Wind: kt</span>
-                                <span>Temperature: C</span>
                             </div>
                         </div>
                         <a class="inline-btn" href="${escapeHtml(windyUrl)}" target="_blank" rel="noopener noreferrer">OPEN WINDY</a>
+                    </div>
+                    <div class="windy-search">
+                        <div class="field" style="margin:0;">
+                            <label for="windySearchInput">City or airport</label>
+                            <input id="windySearchInput" autocomplete="off" placeholder="LEMD or Madrid">
+                        </div>
+                        <button class="primary-btn" id="windySearchBtn">LOCATE</button>
+                        <p id="windySearchStatus" class="empty">${escapeHtml(windySearchStatus)}</p>
                     </div>
                     <div class="windy-frame">
                         <iframe
@@ -630,17 +711,74 @@
                     </div>
                 </section>
             `;
+
+            const input = document.getElementById("windySearchInput");
+            const button = document.getElementById("windySearchBtn");
+            button.addEventListener("click", locateWindyPlace);
+            input.addEventListener("keydown", (event) => {
+                if (event.key === "Enter") locateWindyPlace();
+            });
         }
 
-        function getWindyRadarUrl() {
+        async function locateWindyPlace() {
+            const input = document.getElementById("windySearchInput");
+            const status = document.getElementById("windySearchStatus");
+            const query = input.value.trim();
+            if (!query) {
+                status.textContent = "Enter an airport ICAO/IATA code or city name.";
+                return;
+            }
+
+            const airport = findAirportForWindy(query);
+            if (airport) {
+                windyLocation = {
+                    label: `${airport.icao} ${airport.name || "Airport"}`,
+                    lat: airport.lat,
+                    lon: airport.lon,
+                    zoom: 8
+                };
+                windySearchStatus = `Located ${windyLocation.label}`;
+                renderWindy();
+                return;
+            }
+
+            status.textContent = `Searching ${query}...`;
+            try {
+                const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`);
+                const json = await response.json();
+                const place = Array.isArray(json.results) ? json.results[0] : null;
+                if (!response.ok || !place) throw new Error("No city match found.");
+
+                const country = place.country_code || place.country || "";
+                windyLocation = {
+                    label: [place.name, country].filter(Boolean).join(", "),
+                    lat: place.latitude,
+                    lon: place.longitude,
+                    zoom: place.population && place.population > 500000 ? 7 : 8
+                };
+                windySearchStatus = `Located ${windyLocation.label}`;
+                renderWindy();
+            } catch (err) {
+                status.textContent = err.message || "Unable to locate that city or airport.";
+            }
+        }
+
+        function findAirportForWindy(query) {
+            const normalized = query.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+            const airports = window.HPF_AIRPORT_COORDS || {};
+            if (airports[normalized]) return airports[normalized];
+            return Object.values(airports).find((airport) => airport.iata === normalized) || null;
+        }
+
+        function getWindyRadarUrl(location = windyLocation) {
             const params = new URLSearchParams({
-                lat: "40.4",
-                lon: "-3.7",
-                detailLat: "40.4",
-                detailLon: "-3.7",
+                lat: String(location.lat),
+                lon: String(location.lon),
+                detailLat: String(location.lat),
+                detailLon: String(location.lon),
                 width: "650",
                 height: "450",
-                zoom: "5",
+                zoom: String(location.zoom || 5),
                 level: "surface",
                 overlay: "radar",
                 product: "radar",
