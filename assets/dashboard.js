@@ -18,6 +18,8 @@
         let dictionaryQuery = "";
         let dictionaryCategory = "All";
         let selectedDictionaryTerm = null;
+        let abbreviationEntries = null;
+        let abbreviationLoadPromise = null;
 
         if (!accessToken) {
             window.location.href = "index.html";
@@ -143,7 +145,7 @@
                     if (!bookingsData || force) bookingsData = await loadBookings();
                     renderFlightCenter();
                 } else if (currentView === "dictionary") {
-                    renderDictionary();
+                    await renderDictionary();
                 } else if (currentView === "weather") {
                     renderWeather();
                 } else if (currentView === "windy") {
@@ -662,14 +664,25 @@
             bindBookingButtons();
         }
 
-        function renderDictionary() {
+        async function renderDictionary() {
+            const panel = document.getElementById("mainPanel");
+            if (!abbreviationEntries) {
+                panel.innerHTML = `<p class="empty">Loading dictionary database...</p>`;
+                try {
+                    await loadAbbreviationEntries();
+                } catch (err) {
+                    panel.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+                    return;
+                }
+            }
+
             const entries = getDictionaryEntries();
             const categories = ["All", ...new Set(entries.map((entry) => entry.category))];
             const filtered = filterDictionaryEntries(entries);
             const selected = selectedDictionaryTerm
-                ? filtered.find((entry) => entry.term === selectedDictionaryTerm) || filtered[0]
+                ? filtered.find((entry) => entry.id === selectedDictionaryTerm) || filtered[0]
                 : filtered[0];
-            selectedDictionaryTerm = selected?.term || null;
+            selectedDictionaryTerm = selected?.id || null;
 
             document.getElementById("mainPanel").innerHTML = `
                 <section class="dictionary-layout">
@@ -728,7 +741,28 @@
         }
 
         function getDictionaryEntries() {
-            return Array.isArray(window.HPF_TERMINOLOGY_ENTRIES) ? window.HPF_TERMINOLOGY_ENTRIES : [];
+            const terminology = Array.isArray(window.HPF_TERMINOLOGY_ENTRIES) ? window.HPF_TERMINOLOGY_ENTRIES : [];
+            const abbreviations = Array.isArray(abbreviationEntries) ? abbreviationEntries : [];
+            return [...terminology, ...abbreviations].map((entry, index) => ({
+                ...entry,
+                id: entry.id || `term-${index}-${entry.category}-${entry.term}`
+            }));
+        }
+
+        async function loadAbbreviationEntries() {
+            if (abbreviationEntries) return abbreviationEntries;
+            if (!abbreviationLoadPromise) {
+                abbreviationLoadPromise = fetch("assets/aviation-abbreviations-data.json")
+                    .then((response) => {
+                        if (!response.ok) throw new Error(`Dictionary database failed to load (HTTP ${response.status}).`);
+                        return response.json();
+                    })
+                    .then((entries) => {
+                        abbreviationEntries = Array.isArray(entries) ? entries : [];
+                        return abbreviationEntries;
+                    });
+            }
+            return abbreviationLoadPromise;
         }
 
         function filterDictionaryEntries(entries) {
@@ -759,13 +793,19 @@
                 return `<p class="empty">No terminology matches this search.</p>`;
             }
 
-            return entries.map((entry) => `
-                <button class="dictionary-item ${entry.term === selectedDictionaryTerm ? "active" : ""}" data-dictionary-term="${escapeHtml(entry.term)}">
+            const limit = 320;
+            const visibleEntries = entries.slice(0, limit);
+            const notice = entries.length > limit
+                ? `<p class="empty dictionary-limit">Showing first ${limit} matches. Refine the search to narrow ${entries.length} results.</p>`
+                : "";
+
+            return `${notice}${visibleEntries.map((entry) => `
+                <button class="dictionary-item ${entry.id === selectedDictionaryTerm ? "active" : ""}" data-dictionary-term="${escapeHtml(entry.id)}">
                     <span>${escapeHtml(entry.category)}</span>
                     <strong>${escapeHtml(entry.term)}</strong>
                     <small>${escapeHtml(entry.fullName || entry.sourceGroup)}</small>
                 </button>
-            `).join("");
+            `).join("")}`;
         }
 
         function renderDictionaryDetail(entry) {
