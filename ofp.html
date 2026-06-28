@@ -227,11 +227,10 @@
 
         .signature-canvas {
             position: absolute;
-            inset: 18px;
+            inset: 0;
             z-index: 4;
-            width: calc(100% - 36px);
-            height: calc(100% - 36px);
-            border-radius: 14px;
+            width: 100%;
+            height: 100%;
             pointer-events: none;
             touch-action: none;
         }
@@ -275,6 +274,7 @@
         }
 
         .pdf-page {
+            position: relative;
             width: 100%;
             background: #fff;
             box-shadow: 0 8px 26px rgba(0,0,0,0.32);
@@ -295,6 +295,7 @@
         }
 
         .ofp-sheet {
+            position: relative;
             max-width: 1040px;
             min-height: 100%;
             margin: 0 auto;
@@ -453,8 +454,7 @@
         const API_ROOT = "https://vamsys.io/api/v3/pilot";
         const accessToken = localStorage.getItem("vamsys_token");
         const bookingId = new URLSearchParams(window.location.search).get("booking");
-        let signatureCanvas = null;
-        let signatureContext = null;
+        const signatureLayers = new Map();
         let signatureStrokes = [];
         let activeStroke = null;
         let signatureDrawing = false;
@@ -625,45 +625,58 @@
                 setSignatureStatus("Signature cleared.");
             });
             document.getElementById("saveSignatureBtn").addEventListener("click", saveSignature);
-            window.addEventListener("resize", () => signatureCanvas && resizeSignatureCanvas());
+            window.addEventListener("resize", resizeSignatureLayers);
         }
 
         function enableSignatureLayer() {
             const viewer = document.getElementById("viewer");
             document.getElementById("signatureToolbar").hidden = false;
-            signatureCanvas = document.createElement("canvas");
-            signatureCanvas.className = "signature-canvas";
-            signatureCanvas.setAttribute("aria-label", "OFP signature layer");
-            viewer.appendChild(signatureCanvas);
-            signatureContext = signatureCanvas.getContext("2d");
-            bindSignatureCanvas();
+            signatureLayers.clear();
+            const pages = [...viewer.querySelectorAll(".pdf-page")];
+            const targets = pages.length ? pages : [...viewer.querySelectorAll(".ofp-sheet")];
+            targets.forEach((target, index) => {
+                const pageId = target.dataset.page || String(index + 1);
+                const canvas = document.createElement("canvas");
+                canvas.className = "signature-canvas";
+                canvas.dataset.signaturePage = pageId;
+                canvas.setAttribute("aria-label", `OFP page ${pageId} signature layer`);
+                target.appendChild(canvas);
+                signatureLayers.set(pageId, {
+                    canvas,
+                    context: canvas.getContext("2d")
+                });
+                bindSignatureCanvas(canvas, pageId);
+            });
             loadSavedSignature();
-            requestAnimationFrame(resizeSignatureCanvas);
+            requestAnimationFrame(resizeSignatureLayers);
         }
 
-        function bindSignatureCanvas() {
-            signatureCanvas.addEventListener("pointerdown", (event) => {
+        function bindSignatureCanvas(canvas, pageId) {
+            canvas.addEventListener("pointerdown", (event) => {
                 if (!signatureDrawing) return;
-                signatureCanvas.setPointerCapture(event.pointerId);
-                activeStroke = [signaturePoint(event)];
+                canvas.setPointerCapture(event.pointerId);
+                activeStroke = {
+                    page: pageId,
+                    points: [signaturePoint(event, canvas)]
+                };
                 signatureStrokes.push(activeStroke);
                 signedAt = null;
             });
-            signatureCanvas.addEventListener("pointermove", (event) => {
+            canvas.addEventListener("pointermove", (event) => {
                 if (!activeStroke || !signatureDrawing) return;
-                activeStroke.push(signaturePoint(event));
-                redrawSignature();
+                activeStroke.points.push(signaturePoint(event, canvas));
+                redrawSignaturePage(pageId);
             });
             const endStroke = () => {
                 activeStroke = null;
                 updateSignatureControls();
             };
-            signatureCanvas.addEventListener("pointerup", endStroke);
-            signatureCanvas.addEventListener("pointercancel", endStroke);
+            canvas.addEventListener("pointerup", endStroke);
+            canvas.addEventListener("pointercancel", endStroke);
         }
 
-        function signaturePoint(event) {
-            const rect = signatureCanvas.getBoundingClientRect();
+        function signaturePoint(event, canvas) {
+            const rect = canvas.getBoundingClientRect();
             return {
                 x: (event.clientX - rect.left) / rect.width,
                 y: (event.clientY - rect.top) / rect.height
@@ -672,48 +685,58 @@
 
         function toggleSignatureMode() {
             signatureDrawing = !signatureDrawing;
-            signatureCanvas.classList.toggle("drawing", signatureDrawing);
+            signatureLayers.forEach(({ canvas }) => canvas.classList.toggle("drawing", signatureDrawing));
             const button = document.getElementById("signOfpBtn");
             button.classList.toggle("active", signatureDrawing);
             button.textContent = signatureDrawing ? "FINISH WRITING" : "SIGN OFP";
-            setSignatureStatus(signatureDrawing ? "Write directly on the OFP, then select FINISH WRITING." : "Review the signature and save when ready.");
+            setSignatureStatus(signatureDrawing ? "Write anywhere on this page. Finish writing to scroll to another page." : "Scroll to another page or save the signature.");
             updateSignatureControls();
         }
 
-        function resizeSignatureCanvas() {
-            const rect = signatureCanvas.getBoundingClientRect();
-            const scale = Math.max(1, window.devicePixelRatio || 1);
-            signatureCanvas.width = Math.max(1, Math.round(rect.width * scale));
-            signatureCanvas.height = Math.max(1, Math.round(rect.height * scale));
-            signatureContext.setTransform(scale, 0, 0, scale, 0, 0);
-            redrawSignature();
+        function resizeSignatureLayers() {
+            signatureLayers.forEach(({ canvas, context }, pageId) => {
+                const rect = canvas.getBoundingClientRect();
+                const scale = Math.max(1, window.devicePixelRatio || 1);
+                canvas.width = Math.max(1, Math.round(rect.width * scale));
+                canvas.height = Math.max(1, Math.round(rect.height * scale));
+                context.setTransform(scale, 0, 0, scale, 0, 0);
+                redrawSignaturePage(pageId);
+            });
         }
 
         function redrawSignature() {
-            if (!signatureCanvas || !signatureContext) return;
-            const rect = signatureCanvas.getBoundingClientRect();
-            signatureContext.clearRect(0, 0, rect.width, rect.height);
-            signatureContext.strokeStyle = "#1756b8";
-            signatureContext.lineWidth = 2.4;
-            signatureContext.lineCap = "round";
-            signatureContext.lineJoin = "round";
-            signatureStrokes.forEach((stroke) => {
-                if (!stroke.length) return;
-                signatureContext.beginPath();
-                stroke.forEach((point, index) => {
+            signatureLayers.forEach((_, pageId) => redrawSignaturePage(pageId));
+        }
+
+        function redrawSignaturePage(pageId) {
+            const layer = signatureLayers.get(String(pageId));
+            if (!layer) return;
+            const { canvas, context } = layer;
+            const rect = canvas.getBoundingClientRect();
+            context.clearRect(0, 0, rect.width, rect.height);
+            context.strokeStyle = "#1756b8";
+            context.lineWidth = 2.4;
+            context.lineCap = "round";
+            context.lineJoin = "round";
+            signatureStrokes
+                .filter((stroke) => String(stroke.page) === String(pageId))
+                .forEach((stroke) => {
+                if (!stroke.points?.length) return;
+                context.beginPath();
+                stroke.points.forEach((point, index) => {
                     const x = point.x * rect.width;
                     const y = point.y * rect.height;
-                    if (index === 0) signatureContext.moveTo(x, y);
-                    else signatureContext.lineTo(x, y);
+                    if (index === 0) context.moveTo(x, y);
+                    else context.lineTo(x, y);
                 });
-                signatureContext.stroke();
+                context.stroke();
             });
         }
 
         function saveSignature() {
             if (!signatureStrokes.length) return;
             signatureDrawing = false;
-            signatureCanvas.classList.remove("drawing");
+            signatureLayers.forEach(({ canvas }) => canvas.classList.remove("drawing"));
             signedAt = new Date().toISOString();
             localStorage.setItem(signatureStorageKey(), JSON.stringify({
                 strokes: signatureStrokes,
@@ -730,7 +753,9 @@
             try {
                 const saved = JSON.parse(localStorage.getItem(signatureStorageKey()) || "null");
                 if (!saved?.strokes) return;
-                signatureStrokes = saved.strokes;
+                signatureStrokes = saved.strokes.map((stroke) => Array.isArray(stroke)
+                    ? { page: "1", points: stroke }
+                    : stroke);
                 signedAt = saved.signedAt || null;
                 signerName = saved.signerName || signerName;
                 setSignatureStatus(`SIGNED BY ${signerName.toUpperCase()} | ${formatUtcTimestamp(signedAt)}`);
