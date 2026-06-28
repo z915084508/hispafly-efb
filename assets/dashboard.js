@@ -9,10 +9,6 @@
         let pirepsData = null;
         let claimsData = null;
         let notamsData = null;
-        let navigraphChartsData = null;
-        let navigraphAirportData = null;
-        let navigraphSelectedChart = null;
-        let navigraphImageUrl = null;
         let windyLocation = { label: "Madrid Area", lat: 40.4, lon: -3.7, zoom: 5 };
         let windySearchStatus = "Default radar area";
         let dictionaryQuery = "";
@@ -50,8 +46,7 @@
                 subhead: "Charts and dictionary",
                 icon: "assets/app-icons/dictionary.svg",
                 apps: [
-                    { view: "dictionary", label: "Dictionary", subhead: "Pilot terminology", icon: "assets/app-icons/dictionary.svg" },
-                    { view: "navigraph", label: "NAVIGRAPH", subhead: "Airport charts", icon: "assets/app-icons/navigraph.svg" }
+                    { view: "dictionary", label: "Dictionary", subhead: "Pilot terminology", icon: "assets/app-icons/dictionary.svg" }
                 ]
             },
             { view: "telex", label: "TELEX", subhead: "Hoppie ACARS", icon: "assets/app-icons/telex.png" },
@@ -115,8 +110,7 @@
                 windy: ["Weather", "WINDY Radar", "Interactive weather radar and forecast layers."],
                 telex: ["ACARS", "TELEX", "Hoppie ACARS style logon, inbox, and telex compose station."],
                 cdmAirport: ["Airport CDM", "CDM Airport Status", "Airport departure queue and ATFCM status."],
-                liveMap: ["Live Ops", "Live Flight Map", "Real-time VAMSYS active flight positions."],
-                navigraph: ["Charts", "NAVIGRAPH", "Airport charts and online briefing access."]
+                liveMap: ["Live Ops", "Live Flight Map", "Real-time VAMSYS active flight positions."]
             }[view];
             document.getElementById("viewEyebrow").textContent = copy[0];
             document.getElementById("viewTitle").textContent = copy[1];
@@ -157,15 +151,6 @@
                     renderCdmAirport();
                 } else if (currentView === "liveMap") {
                     renderLiveFlightMap();
-                } else if (currentView === "navigraph") {
-                    if (!bookingsData || force) {
-                        try {
-                            bookingsData = await loadBookings();
-                        } catch (err) {
-                            console.warn("Bookings unavailable for Navigraph shortcuts", err);
-                        }
-                    }
-                    renderNavigraph();
                 }
             } catch (err) {
                 panel.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
@@ -1673,272 +1658,6 @@
             if (!value) throw new Error(`${label} is required.`);
             return new Date(value).toISOString();
         }
-
-        function renderNavigraph() {
-            const token = getNavigraphToken();
-            const currentAirport = (localStorage.getItem("navigraph_airport") || "NZWN").toUpperCase();
-            const shortcuts = getNavigraphAirportShortcuts();
-            const shortcutButtons = shortcuts.length
-                ? shortcuts.map((code) => `<button class="inline-btn compact" data-navigraph-airport="${escapeHtml(code)}">${escapeHtml(code)}</button>`).join("")
-                : `<span class="empty">No booked flight airports available.</span>`;
-            const charts = Array.isArray(navigraphChartsData?.charts) ? navigraphChartsData.charts : [];
-            const categories = ["APT", "DEP", "ARR", "APP", "REF"];
-
-            document.getElementById("mainPanel").innerHTML = `
-                <section class="navigraph-layout">
-                    <aside class="card navigraph-sidebar">
-                        <h2>Airport Charts</h2>
-                        <div class="navigraph-status ${token ? "is-connected" : ""}">
-                            <span>${token ? "CONNECTED" : "TOKEN REQUIRED"}</span>
-                            <strong>${token ? "Navigraph API ready" : "Connect a Navigraph user token"}</strong>
-                        </div>
-                        <div class="field">
-                            <label for="navigraphTokenInput">Navigraph access token</label>
-                            <input id="navigraphTokenInput" type="password" autocomplete="off" value="${escapeHtml(token)}" placeholder="Bearer token from approved Navigraph auth flow">
-                        </div>
-                        <div class="button-row">
-                            <button class="inline-btn" id="saveNavigraphTokenBtn">SAVE TOKEN</button>
-                            <button class="inline-btn ghost" id="clearNavigraphTokenBtn">CLEAR</button>
-                        </div>
-                        <div class="field">
-                            <label for="navigraphAirportInput">Airport ICAO</label>
-                            <input id="navigraphAirportInput" maxlength="4" value="${escapeHtml(currentAirport)}" placeholder="NZWN">
-                        </div>
-                        <button class="inline-btn" id="loadNavigraphAirportBtn">LOAD CHARTS</button>
-                        <div class="navigraph-shortcuts">
-                            <strong>Flight airports</strong>
-                            <div class="button-row wrap">${shortcutButtons}</div>
-                        </div>
-                        <p class="empty">Charts are requested online from Navigraph and are not stored offline.</p>
-                    </aside>
-                    <section class="card navigraph-main">
-                        <div class="navigraph-airport-head">
-                            <div>
-                                <h2>${escapeHtml(currentAirport)} Chart Briefing</h2>
-                                ${renderNavigraphAirportMeta(navigraphAirportData)}
-                            </div>
-                            <div class="button-row">
-                                <button class="inline-btn ghost" id="navigraphDayBtn">DAY</button>
-                                <button class="inline-btn ghost" id="navigraphNightBtn">NIGHT</button>
-                            </div>
-                        </div>
-                        <div class="navigraph-workbench">
-                            <div class="navigraph-chart-list">
-                                ${charts.length ? categories.map((category) => renderNavigraphCategory(category, charts)).join("") : renderNavigraphEmpty(token)}
-                            </div>
-                            <div class="navigraph-viewer" id="navigraphViewer">
-                                ${renderNavigraphViewer()}
-                            </div>
-                        </div>
-                    </section>
-                </section>
-            `;
-
-            document.getElementById("saveNavigraphTokenBtn").addEventListener("click", saveNavigraphToken);
-            document.getElementById("clearNavigraphTokenBtn").addEventListener("click", clearNavigraphToken);
-            document.getElementById("loadNavigraphAirportBtn").addEventListener("click", loadNavigraphFromInput);
-            document.getElementById("navigraphAirportInput").addEventListener("keydown", (event) => {
-                if (event.key === "Enter") loadNavigraphFromInput();
-            });
-            document.getElementById("navigraphDayBtn").addEventListener("click", () => loadSelectedNavigraphChart("day"));
-            document.getElementById("navigraphNightBtn").addEventListener("click", () => loadSelectedNavigraphChart("night"));
-            document.querySelectorAll("[data-navigraph-airport]").forEach((button) => {
-                button.addEventListener("click", () => {
-                    document.getElementById("navigraphAirportInput").value = button.dataset.navigraphAirport;
-                    loadNavigraphFromInput();
-                });
-            });
-            document.querySelectorAll("[data-chart-index]").forEach((button) => {
-                button.addEventListener("click", () => selectNavigraphChart(Number(button.dataset.chartIndex)));
-            });
-        }
-
-        function renderNavigraphAirportMeta(airport) {
-            if (!airport) {
-                return `<p class="empty">Load an airport to view available Navigraph charts.</p>`;
-            }
-            const location = [airport.city, airport.country_name].filter(Boolean).join(", ");
-            return `
-                <div class="meta navigraph-meta">
-                    <span>${escapeHtml(airport.name || "Airport")}</span>
-                    <span>${escapeHtml(location || "Location unavailable")}</span>
-                    <span>AIRAC ${escapeHtml(airport.parsed_cycle || "N/A")}</span>
-                </div>
-            `;
-        }
-
-        function renderNavigraphEmpty(hasToken) {
-            const message = hasToken
-                ? "Enter an ICAO code and load charts. NZWN and YBBN are Navigraph demo airports."
-                : "Save a Navigraph access token first. Unauthenticated chart access is not available.";
-            return `<div class="navigraph-empty"><strong>READY</strong><span>${escapeHtml(message)}</span></div>`;
-        }
-
-        function renderNavigraphCategory(category, charts) {
-            const group = charts.filter((chart) => chart.category === category);
-            if (!group.length) return "";
-            const items = group.map((chart) => {
-                const index = charts.indexOf(chart);
-                const isSelected = navigraphSelectedChart && chart.id === navigraphSelectedChart.id;
-                return `
-                    <button class="navigraph-chart-item ${isSelected ? "active" : ""}" data-chart-index="${index}">
-                        <span>${escapeHtml(chart.index_number || chart.id)}</span>
-                        <strong>${escapeHtml(chart.name || chart.id)}</strong>
-                        <small>${escapeHtml([chart.type_code, chart.revision_date].filter(Boolean).join(" | "))}</small>
-                    </button>
-                `;
-            }).join("");
-            return `
-                <section class="navigraph-category">
-                    <h3>${escapeHtml(category)}</h3>
-                    <div>${items}</div>
-                </section>
-            `;
-        }
-
-        function renderNavigraphViewer() {
-            if (navigraphImageUrl && navigraphSelectedChart) {
-                return `
-                    <div class="navigraph-chart-frame">
-                        <img src="${escapeHtml(navigraphImageUrl)}" alt="${escapeHtml(navigraphSelectedChart.name || "Navigraph chart")}">
-                    </div>
-                `;
-            }
-            if (navigraphSelectedChart) {
-                return `<div class="navigraph-empty"><strong>${escapeHtml(navigraphSelectedChart.id)}</strong><span>Select DAY or NIGHT to request the chart image.</span></div>`;
-            }
-            return `<div class="navigraph-empty"><strong>NO CHART SELECTED</strong><span>Choose a chart from the list to preview it here.</span></div>`;
-        }
-
-        async function loadNavigraphFromInput() {
-            const input = document.getElementById("navigraphAirportInput");
-            const icao = input.value.trim().toUpperCase();
-            if (!/^[A-Z0-9]{4}$/.test(icao)) {
-                showNavigraphViewerMessage("INVALID ICAO", "Enter a four-character airport ICAO code.");
-                return;
-            }
-            localStorage.setItem("navigraph_airport", icao);
-            navigraphAirportData = null;
-            navigraphChartsData = null;
-            navigraphSelectedChart = null;
-            clearNavigraphImageUrl();
-            showNavigraphViewerMessage("LOADING", `Requesting ${icao} charts from Navigraph...`);
-            try {
-                const [airport, charts] = await Promise.all([
-                    fetchNavigraphJson(`/v2/airport/${encodeURIComponent(icao)}`),
-                    fetchNavigraphJson(`/v2/charts/${encodeURIComponent(icao)}?version=STD&rules=IFR`)
-                ]);
-                navigraphAirportData = airport;
-                navigraphChartsData = charts;
-                navigraphSelectedChart = Array.isArray(charts?.charts) ? charts.charts[0] : null;
-                renderNavigraph();
-            } catch (err) {
-                showNavigraphViewerMessage("NAVIGRAPH ERROR", err.message);
-            }
-        }
-
-        function selectNavigraphChart(index) {
-            const charts = Array.isArray(navigraphChartsData?.charts) ? navigraphChartsData.charts : [];
-            navigraphSelectedChart = charts[index] || null;
-            clearNavigraphImageUrl();
-            renderNavigraph();
-        }
-
-        async function loadSelectedNavigraphChart(theme) {
-            if (!navigraphSelectedChart) {
-                showNavigraphViewerMessage("NO CHART SELECTED", "Choose a chart before requesting an image.");
-                return;
-            }
-            const url = theme === "night"
-                ? navigraphSelectedChart.image_night_url
-                : navigraphSelectedChart.image_day_url;
-            if (!url) {
-                showNavigraphViewerMessage("IMAGE UNAVAILABLE", "Navigraph did not return an image URL for this chart.");
-                return;
-            }
-            showNavigraphViewerMessage("LOADING IMAGE", navigraphSelectedChart.name || navigraphSelectedChart.id);
-            try {
-                const token = getNavigraphToken();
-                if (!token) throw new Error("Navigraph access token is required.");
-                const response = await fetch(url, {
-                    headers: { "Authorization": `Bearer ${token}` }
-                });
-                if (!response.ok) throw new Error(`Chart image request failed with HTTP ${response.status}.`);
-                const blob = await response.blob();
-                clearNavigraphImageUrl();
-                navigraphImageUrl = URL.createObjectURL(blob);
-                renderNavigraph();
-            } catch (err) {
-                showNavigraphViewerMessage("IMAGE ERROR", err.message);
-            }
-        }
-
-        async function fetchNavigraphJson(path) {
-            const token = getNavigraphToken();
-            if (!token) throw new Error("Navigraph access token is required.");
-            const response = await fetch(`https://api.navigraph.com${path}`, {
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Accept": "application/json"
-                }
-            });
-            const text = await response.text();
-            let json = null;
-            try {
-                json = text ? JSON.parse(text) : null;
-            } catch (err) {
-                throw new Error(`Navigraph returned non-JSON data: ${text.slice(0, 120)}`);
-            }
-            if (!response.ok) {
-                const message = json?.message || json?.error || JSON.stringify(json).slice(0, 160);
-                throw new Error(`Navigraph request failed with HTTP ${response.status}: ${message}`);
-            }
-            return json;
-        }
-
-        function saveNavigraphToken() {
-            const token = document.getElementById("navigraphTokenInput").value.trim();
-            if (token) {
-                localStorage.setItem("navigraph_access_token", token.replace(/^Bearer\s+/i, ""));
-            }
-            renderNavigraph();
-        }
-
-        function clearNavigraphToken() {
-            localStorage.removeItem("navigraph_access_token");
-            renderNavigraph();
-        }
-
-        function getNavigraphToken() {
-            return localStorage.getItem("navigraph_access_token") || "";
-        }
-
-        function getNavigraphAirportShortcuts() {
-            const codes = new Set();
-            (bookingsData || []).slice(0, 4).forEach((booking) => {
-                [formatAirport(booking, "departure"), formatAirport(booking, "arrival"), booking.alternate_icao, booking.alternate_airport_icao].forEach((code) => {
-                    const normalized = String(code || "").toUpperCase();
-                    if (/^[A-Z0-9]{4}$/.test(normalized)) codes.add(normalized);
-                });
-            });
-            ["NZWN", "YBBN"].forEach((code) => codes.add(code));
-            return Array.from(codes).slice(0, 8);
-        }
-
-        function showNavigraphViewerMessage(title, message) {
-            const viewer = document.getElementById("navigraphViewer");
-            if (!viewer) return;
-            viewer.innerHTML = `<div class="navigraph-empty"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(message)}</span></div>`;
-        }
-
-        function clearNavigraphImageUrl() {
-            if (navigraphImageUrl) {
-                URL.revokeObjectURL(navigraphImageUrl);
-                navigraphImageUrl = null;
-            }
-        }
-
-
         function renderFlightList(list, emptyMessage, isPirep = false) {
             if (!Array.isArray(list) || list.length === 0) {
                 return `<p class="empty">${escapeHtml(emptyMessage)}</p>`;
