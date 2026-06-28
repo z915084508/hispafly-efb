@@ -29,7 +29,6 @@
         };
 
         const dashboardApps = [
-            { view: "checklist", label: "CHECKLIST", subhead: "Interactive flight flows", icon: "assets/app-icons/checklist.svg" },
             { view: "notams", label: "NOTAM", subhead: "Operational notices", icon: "assets/app-icons/notams.png" },
             { view: "profile", label: "Pilot Profile", subhead: "Identity and rank", icon: "assets/app-icons/profile.png" },
             { view: "flightCenter", label: "Flight Center", subhead: "Bookings and OFP", icon: "assets/app-icons/flight-center.png" },
@@ -46,9 +45,10 @@
             {
                 folder: "tools",
                 label: "TOOLS",
-                subhead: "Charts and dictionary",
+                subhead: "Checklist and dictionary",
                 icon: "assets/app-icons/dictionary.svg",
                 apps: [
+                    { view: "checklist", label: "CHECKLIST", subhead: "Interactive flight flows", icon: "assets/app-icons/checklist.svg" },
                     { view: "dictionary", label: "Dictionary", subhead: "Pilot terminology", icon: "assets/app-icons/dictionary.svg" }
                 ]
             },
