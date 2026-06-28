@@ -1,4 +1,4 @@
-const API_ROOT = "https://vamsys.io/api/v3/pilot";
+﻿const API_ROOT = "https://vamsys.io/api/v3/pilot";
         let accessToken = localStorage.getItem("vamsys_token");
         let currentView = "home";
         let pilotData = null;
