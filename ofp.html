@@ -616,13 +616,19 @@
                 redrawSignature();
                 updateSignatureControls();
             });
-            document.getElementById("clearSignatureBtn").addEventListener("click", () => {
+            document.getElementById("clearSignatureBtn").addEventListener("click", async () => {
                 signatureStrokes = [];
                 signedAt = null;
                 localStorage.removeItem(signatureStorageKey());
                 redrawSignature();
                 updateSignatureControls();
                 setSignatureStatus("Signature cleared.");
+                try {
+                    await syncSignatureRequest("DELETE");
+                    setSignatureStatus("Signature cleared on all devices.");
+                } catch (err) {
+                    setSignatureStatus("Cleared on this device. Cloud removal will retry next time.");
+                }
             });
             document.getElementById("saveSignatureBtn").addEventListener("click", saveSignature);
             window.addEventListener("resize", resizeSignatureLayers);
@@ -733,36 +739,78 @@
             });
         }
 
-        function saveSignature() {
+        async function saveSignature() {
             if (!signatureStrokes.length) return;
             signatureDrawing = false;
             signatureLayers.forEach(({ canvas }) => canvas.classList.remove("drawing"));
             signedAt = new Date().toISOString();
-            localStorage.setItem(signatureStorageKey(), JSON.stringify({
+            const signature = {
                 strokes: signatureStrokes,
                 signedAt,
                 signerName
-            }));
+            };
+            localStorage.setItem(signatureStorageKey(), JSON.stringify(signature));
             document.getElementById("signOfpBtn").classList.remove("active");
             document.getElementById("signOfpBtn").textContent = "SIGN OFP";
-            setSignatureStatus(`SIGNED BY ${signerName.toUpperCase()} | ${formatUtcTimestamp(signedAt)}`);
+            setSignatureStatus(`SIGNED BY ${signerName.toUpperCase()} | ${formatUtcTimestamp(signedAt)} | SYNCING`);
             updateSignatureControls();
+            try {
+                await syncSignatureRequest("PUT", signature);
+                setSignatureStatus(`SIGNED BY ${signerName.toUpperCase()} | ${formatUtcTimestamp(signedAt)} | CLOUD SAVED`);
+            } catch (err) {
+                setSignatureStatus(`SIGNED BY ${signerName.toUpperCase()} | ${formatUtcTimestamp(signedAt)} | SAVED ON DEVICE`);
+            }
         }
 
-        function loadSavedSignature() {
+        async function loadSavedSignature() {
+            let localSignature = null;
             try {
                 const saved = JSON.parse(localStorage.getItem(signatureStorageKey()) || "null");
-                if (!saved?.strokes) return;
-                signatureStrokes = saved.strokes.map((stroke) => Array.isArray(stroke)
-                    ? { page: "1", points: stroke }
-                    : stroke);
-                signedAt = saved.signedAt || null;
-                signerName = saved.signerName || signerName;
-                setSignatureStatus(`SIGNED BY ${signerName.toUpperCase()} | ${formatUtcTimestamp(signedAt)}`);
+                if (saved?.strokes) {
+                    localSignature = saved;
+                    applySignatureRecord(saved, "SAVED ON DEVICE");
+                }
             } catch (err) {
                 console.warn("Unable to restore OFP signature", err);
             }
             updateSignatureControls();
+            try {
+                const response = await syncSignatureRequest("GET");
+                if (response.data?.strokes) {
+                    localStorage.setItem(signatureStorageKey(), JSON.stringify(response.data));
+                    applySignatureRecord(response.data, "CLOUD SAVED");
+                } else if (localSignature) {
+                    await syncSignatureRequest("PUT", localSignature);
+                    setSignatureStatus(`SIGNED BY ${signerName.toUpperCase()} | ${formatUtcTimestamp(signedAt)} | CLOUD SAVED`);
+                }
+            } catch (err) {
+                console.info("Cloud OFP signature unavailable; local copy remains active.", err.message);
+            }
+        }
+
+        function applySignatureRecord(record, sourceLabel) {
+            signatureStrokes = record.strokes.map((stroke) => Array.isArray(stroke)
+                ? { page: "1", points: stroke }
+                : stroke);
+            signedAt = record.signedAt || null;
+            signerName = record.signerName || signerName;
+            redrawSignature();
+            updateSignatureControls();
+            setSignatureStatus(`SIGNED BY ${signerName.toUpperCase()} | ${formatUtcTimestamp(signedAt)} | ${sourceLabel}`);
+        }
+
+        async function syncSignatureRequest(method, signature) {
+            const response = await fetch(`/api/ofp-signature?booking=${encodeURIComponent(bookingId)}`, {
+                method,
+                headers: {
+                    ...authHeader,
+                    ...(signature ? { "Content-Type": "application/json" } : {})
+                },
+                body: signature ? JSON.stringify({ signature }) : undefined
+            });
+            const json = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(json.message || `Signature sync HTTP ${response.status}`);
+            return json;
         }
 
         function updateSignatureControls() {

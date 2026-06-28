@@ -17,19 +17,23 @@ export default async function handler(req, res) {
       return res.status(200).json({
         data: row ? {
           telex: { logonCode: decrypt(row.telex_logon_cipher) },
-          preferences: row.preferences || {},
+          preferences: publicPreferences(row.preferences),
           updatedAt: row.updated_at || null
         } : null
       });
     }
 
     const body = normalizeBody(req.body);
-    const logonCode = String(body.telex?.logonCode || '').trim().slice(0, 500);
-    const preferences = isPlainObject(body.preferences) ? body.preferences : {};
-    await writeSettings(pilotId, {
-      telex_logon_cipher: logonCode ? encrypt(logonCode) : null,
-      preferences
-    });
+    const updates = {};
+    if (body.telex && Object.prototype.hasOwnProperty.call(body.telex, 'logonCode')) {
+      const logonCode = String(body.telex.logonCode || '').trim().slice(0, 500);
+      updates.telex_logon_cipher = logonCode ? encrypt(logonCode) : null;
+    }
+    if (isPlainObject(body.preferences)) updates.preferences = body.preferences;
+    if (!Object.keys(updates).length) {
+      throw httpError(400, 'empty_settings_update', 'No supported settings were provided.');
+    }
+    await writeSettings(pilotId, updates);
     return res.status(200).json({ ok: true, updatedAt: new Date().toISOString() });
   } catch (err) {
     const status = Number(err.status) || 500;
@@ -143,6 +147,12 @@ function normalizeBody(body) {
 
 function isPlainObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function publicPreferences(value) {
+  if (!isPlainObject(value)) return {};
+  const { ofpSignatures, ...preferences } = value;
+  return preferences;
 }
 
 function httpError(status, code, message) {
