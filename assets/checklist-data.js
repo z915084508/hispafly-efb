@@ -1,6 +1,6 @@
 window.HISPAFLY_CHECKLISTS = {
     id: "hispafly-fleet-v2",
-    notice: "SIMULATOR USE ONLY 鈥?Training baseline; not a controlled FCOM/QRH copy. Aircraft configuration and operator-approved procedures always take precedence.",
+    notice: "SIMULATOR USE ONLY — Training baseline; not a controlled FCOM/QRH copy. Aircraft configuration and operator-approved procedures always take precedence.",
     aircraft: [
         {
             id: "b737-800",
@@ -26,7 +26,7 @@ window.HISPAFLY_CHECKLISTS = {
             title: "AIRBUS A320 FAMILY",
             subtitle: "A318/A319/A320/A321 normal procedures",
             manual: "Airbus FCOM PRO-NOR",
-            source: "CQH R7 路 Revision 30 MAY 2012 路 configuration-dependent items simplified",
+            source: "CQH R7 · Revision 30 MAY 2012 · configuration-dependent items simplified",
             phases: [
                 { id: "cockpit-prep", name: "Cockpit Preparation", items: [["Aircraft power", "ESTABLISHED"], ["ADIRS", "NAV"], ["Emergency equipment", "CHECKED"], ["Oxygen", "CHECKED"], ["FMGS", "INITIALIZED"], ["Takeoff data", "INSERTED"]] },
                 { id: "before-start", name: "Before Pushback / Start", items: [["Loadsheet", "CHECKED"], ["Takeoff data", "PREPARED / CHECKED"], ["Seats, belts and pedals", "ADJUSTED"], ["MCDU", "TAKEOFF CONFIGURATION"], ["Cockpit preparation", "COMPLETE"], ["Windows and doors", "CLOSED"], ["Beacon", "ON"]] },
