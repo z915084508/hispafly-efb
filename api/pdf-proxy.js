@@ -2,6 +2,7 @@ const ALLOWED_HOSTS = [
   'simbrief.com',
   'navigraph.com',
   'vamsys.io',
+  'vamsys.xyz',
   'cloudfront.net'
 ];
 
