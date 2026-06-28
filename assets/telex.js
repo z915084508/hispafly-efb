@@ -1,3 +1,5 @@
+import('./cloud-sync.js').catch((err) => console.info('Cloud sync module unavailable.', err.message));
+
 const telexState = {
     connected: false,
     currentAtcUnit: "",
