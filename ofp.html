@@ -266,6 +266,34 @@
             background: #fff;
         }
 
+        .pdf-document {
+            display: grid;
+            gap: 14px;
+            width: 100%;
+            max-width: 1120px;
+            margin: 0 auto;
+        }
+
+        .pdf-page {
+            width: 100%;
+            background: #fff;
+            box-shadow: 0 8px 26px rgba(0,0,0,0.32);
+        }
+
+        .pdf-page canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .pdf-loading {
+            min-height: 240px;
+            display: grid;
+            place-items: center;
+            color: var(--muted);
+            font-weight: 700;
+        }
+
         .ofp-sheet {
             max-width: 1040px;
             min-height: 100%;
@@ -420,6 +448,7 @@
     </main>
 
     <script src="assets/reference-data.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" referrerpolicy="no-referrer"></script>
     <script>
         const API_ROOT = "https://vamsys.io/api/v3/pilot";
         const accessToken = localStorage.getItem("vamsys_token");
@@ -524,12 +553,59 @@
             const viewer = document.getElementById("viewer");
             const pdfUrl = data?.pdf_url || data?.ofp_data?.pdf_url;
             if (pdfUrl) {
-                viewer.innerHTML = `<iframe class="pdf-frame" src="${escapeHtml(pdfUrl)}" title="SimBrief OFP PDF"></iframe>`;
-                enableSignatureLayer();
+                renderPdfDocument(pdfUrl);
                 return;
             }
             viewer.innerHTML = renderLidoOfp(data, booking);
             enableSignatureLayer();
+        }
+
+        async function renderPdfDocument(pdfUrl) {
+            const viewer = document.getElementById("viewer");
+            viewer.innerHTML = `<div class="pdf-loading">Preparing SimBrief OFP...</div>`;
+            try {
+                if (!window.pdfjsLib) throw new Error("The embedded PDF viewer could not be loaded.");
+                window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+                    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+                const source = `/api/pdf-proxy?url=${encodeURIComponent(pdfUrl)}`;
+                const pdf = await window.pdfjsLib.getDocument(source).promise;
+                const documentHost = document.createElement("div");
+                documentHost.className = "pdf-document";
+                viewer.replaceChildren(documentHost);
+
+                for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+                    const page = await pdf.getPage(pageNumber);
+                    const baseViewport = page.getViewport({ scale: 1 });
+                    const availableWidth = Math.max(320, Math.min(1060, viewer.clientWidth - 40));
+                    const scale = availableWidth / baseViewport.width;
+                    const viewport = page.getViewport({ scale });
+                    const pixelRatio = Math.min(2, window.devicePixelRatio || 1);
+                    const pageElement = document.createElement("div");
+                    pageElement.className = "pdf-page";
+                    pageElement.dataset.page = String(pageNumber);
+                    const canvas = document.createElement("canvas");
+                    canvas.width = Math.floor(viewport.width * pixelRatio);
+                    canvas.height = Math.floor(viewport.height * pixelRatio);
+                    canvas.style.aspectRatio = `${viewport.width} / ${viewport.height}`;
+                    pageElement.appendChild(canvas);
+                    documentHost.appendChild(pageElement);
+                    await page.render({
+                        canvasContext: canvas.getContext("2d"),
+                        viewport,
+                        transform: pixelRatio === 1 ? null : [pixelRatio, 0, 0, pixelRatio, 0, 0]
+                    }).promise;
+                }
+
+                enableSignatureLayer();
+            } catch (err) {
+                viewer.innerHTML = `
+                    <div class="pdf-loading">
+                        <div>
+                            <p class="error">${escapeHtml(err.message)}</p>
+                            <p class="muted">The OFP could not be rendered inside this device.</p>
+                        </div>
+                    </div>`;
+            }
         }
 
         function setupSignatureControls() {
