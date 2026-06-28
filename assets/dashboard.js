@@ -1,4 +1,4 @@
-﻿const API_ROOT = "https://vamsys.io/api/v3/pilot";
+const API_ROOT = "https://vamsys.io/api/v3/pilot";
         let accessToken = localStorage.getItem("vamsys_token");
         let currentView = "home";
         let pilotData = null;
@@ -16,6 +16,8 @@
         let selectedDictionaryTerm = null;
         let abbreviationEntries = null;
         let abbreviationLoadPromise = null;
+        let checklistPhaseId = null;
+        let checklistAircraftId = localStorage.getItem("hispafly_checklist_aircraft") || "b737-800";
 
         if (!accessToken) {
             window.location.href = "index.html";
@@ -27,6 +29,7 @@
         };
 
         const dashboardApps = [
+            { view: "checklist", label: "CHECKLIST", subhead: "Interactive flight flows", icon: "assets/app-icons/checklist.svg" },
             { view: "notams", label: "NOTAM", subhead: "Operational notices", icon: "assets/app-icons/notams.png" },
             { view: "profile", label: "Pilot Profile", subhead: "Identity and rank", icon: "assets/app-icons/profile.png" },
             { view: "flightCenter", label: "Flight Center", subhead: "Bookings and OFP", icon: "assets/app-icons/flight-center.png" },
@@ -110,7 +113,8 @@
                 windy: ["Weather", "WINDY Radar", "Interactive weather radar and forecast layers."],
                 telex: ["ACARS", "TELEX", "Hoppie ACARS style logon, inbox, and telex compose station."],
                 cdmAirport: ["Airport CDM", "CDM Airport Status", "Airport departure queue and ATFCM status."],
-                liveMap: ["Live Ops", "Live Flight Map", "Real-time VAMSYS active flight positions."]
+                liveMap: ["Live Ops", "Live Flight Map", "Real-time VAMSYS active flight positions."],
+                checklist: ["Flight Deck", "CHECKLIST", "Interactive phase checklists with automatic local progress saving."]
             }[view];
             document.getElementById("viewEyebrow").textContent = copy[0];
             document.getElementById("viewTitle").textContent = copy[1];
@@ -151,6 +155,8 @@
                     renderCdmAirport();
                 } else if (currentView === "liveMap") {
                     renderLiveFlightMap();
+                } else if (currentView === "checklist") {
+                    renderChecklist();
                 }
             } catch (err) {
                 panel.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
@@ -550,6 +556,124 @@
 
         function saveTelexSettings(settings) {
             localStorage.setItem("hpf_telex_settings", JSON.stringify(settings));
+        }
+
+        function getChecklistDefinition() {
+            const fleet = window.HISPAFLY_CHECKLISTS || { id: "empty", aircraft: [] };
+            const selected = fleet.aircraft?.find((aircraft) => aircraft.id === checklistAircraftId) || fleet.aircraft?.[0];
+            if (!selected) return { id: "empty", phases: [] };
+            checklistAircraftId = selected.id;
+            return { ...selected, aircraftId: selected.id, id: `${fleet.id}-${selected.id}`, notice: fleet.notice };
+        }
+
+        function getChecklistStorageKey() {
+            return `hispafly_checklist_progress_${getChecklistDefinition().id}`;
+        }
+
+        function loadChecklistProgress() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(getChecklistStorageKey()) || "{}");
+                return saved && typeof saved === "object" ? saved : {};
+            } catch (_) {
+                return {};
+            }
+        }
+
+        function saveChecklistProgress(progress) {
+            localStorage.setItem(getChecklistStorageKey(), JSON.stringify(progress));
+        }
+
+        function checklistItemKey(phaseId, index) {
+            return `${phaseId}:${index}`;
+        }
+
+        function renderChecklist() {
+            const definition = getChecklistDefinition();
+            const fleet = window.HISPAFLY_CHECKLISTS?.aircraft || [];
+            const phases = definition.phases || [];
+            if (!phases.length) {
+                document.getElementById("mainPanel").innerHTML = `<p class="error">Checklist data is unavailable.</p>`;
+                return;
+            }
+            const progress = loadChecklistProgress();
+            const firstIncomplete = phases.find((phase) => phase.items.some((_, index) => !progress[checklistItemKey(phase.id, index)]));
+            if (!checklistPhaseId || !phases.some((phase) => phase.id === checklistPhaseId)) {
+                checklistPhaseId = (firstIncomplete || phases[0]).id;
+            }
+            const active = phases.find((phase) => phase.id === checklistPhaseId) || phases[0];
+            const total = phases.reduce((sum, phase) => sum + phase.items.length, 0);
+            const complete = phases.reduce((sum, phase) => sum + phase.items.filter((_, index) => progress[checklistItemKey(phase.id, index)]).length, 0);
+            const percent = total ? Math.round((complete / total) * 100) : 0;
+            const activeComplete = active.items.filter((_, index) => progress[checklistItemKey(active.id, index)]).length;
+
+            document.getElementById("mainPanel").innerHTML = `
+                <section class="checklist-shell">
+                    <header class="checklist-summary">
+                        <div><span class="checklist-kicker">FLEET CHECKLIST</span><label class="checklist-aircraft-picker"><span>Aircraft</span><select id="checklistAircraftSelect">${fleet.map((aircraft) => `<option value="${escapeHtml(aircraft.id)}"${aircraft.id === definition.aircraftId ? " selected" : ""}>${escapeHtml(aircraft.title)}</option>`).join("")}</select></label><strong>${complete} / ${total} items complete</strong><small>${escapeHtml(definition.subtitle)} · ${escapeHtml(definition.manual)}${definition.source ? ` · ${escapeHtml(definition.source)}` : ""}</small></div>
+                        <div class="checklist-progress" aria-label="${percent}% complete"><span style="width:${percent}%"></span><b>${percent}%</b></div>
+                    </header>
+                    <div class="checklist-notice">${escapeHtml(definition.notice)}</div>
+                    <div class="checklist-workbench">
+                        <nav class="checklist-phases" aria-label="Checklist phases">
+                            ${phases.map((phase) => {
+                                const done = phase.items.filter((_, index) => progress[checklistItemKey(phase.id, index)]).length;
+                                const isComplete = done === phase.items.length;
+                                return `<button type="button" class="checklist-phase${phase.id === active.id ? " active" : ""}${isComplete ? " complete" : ""}" data-checklist-phase="${escapeHtml(phase.id)}"><span>${escapeHtml(phase.name)}</span><small>${done}/${phase.items.length}</small></button>`;
+                            }).join("")}
+                        </nav>
+                        <section class="checklist-card">
+                            <div class="checklist-card-head"><div><span>PHASE ${phases.indexOf(active) + 1} OF ${phases.length}</span><h2>${escapeHtml(active.name)}</h2></div><strong>${activeComplete}/${active.items.length}</strong></div>
+                            <div class="checklist-items">
+                                ${active.items.map((item, index) => {
+                                    const checked = Boolean(progress[checklistItemKey(active.id, index)]);
+                                    return `<button type="button" class="checklist-item${checked ? " checked" : ""}" data-checklist-item="${index}" aria-pressed="${checked}"><span class="checklist-box">${checked ? "✓" : ""}</span><span class="checklist-challenge">${escapeHtml(item[0])}</span><span class="checklist-dots"></span><strong>${escapeHtml(item[1])}</strong></button>`;
+                                }).join("")}
+                            </div>
+                            <footer class="checklist-actions"><button type="button" class="inline-btn" id="resetChecklistPhase">RESET PHASE</button><button type="button" class="inline-btn danger-btn" id="resetAllChecklists">RESET ALL</button><button type="button" class="primary-btn" id="nextChecklistPhase">${activeComplete === active.items.length ? "NEXT PHASE" : "NEXT INCOMPLETE"}</button></footer>
+                        </section>
+                    </div>
+                </section>`;
+
+            document.getElementById("checklistAircraftSelect").addEventListener("change", (event) => {
+                checklistAircraftId = event.target.value;
+                localStorage.setItem("hispafly_checklist_aircraft", checklistAircraftId);
+                checklistPhaseId = null;
+                renderChecklist();
+            });
+
+            document.querySelectorAll("[data-checklist-phase]").forEach((button) => button.addEventListener("click", () => {
+                checklistPhaseId = button.dataset.checklistPhase;
+                renderChecklist();
+            }));
+            document.querySelectorAll("[data-checklist-item]").forEach((button) => button.addEventListener("click", () => {
+                const next = loadChecklistProgress();
+                const key = checklistItemKey(active.id, Number(button.dataset.checklistItem));
+                next[key] = !next[key];
+                saveChecklistProgress(next);
+                renderChecklist();
+            }));
+            document.getElementById("resetChecklistPhase").addEventListener("click", () => {
+                const next = loadChecklistProgress();
+                active.items.forEach((_, index) => delete next[checklistItemKey(active.id, index)]);
+                saveChecklistProgress(next);
+                renderChecklist();
+            });
+            document.getElementById("resetAllChecklists").addEventListener("click", () => {
+                if (!window.confirm("Reset all checklist progress?")) return;
+                localStorage.removeItem(getChecklistStorageKey());
+                checklistPhaseId = phases[0].id;
+                renderChecklist();
+            });
+            document.getElementById("nextChecklistPhase").addEventListener("click", () => {
+                const latest = loadChecklistProgress();
+                const missing = active.items.findIndex((_, index) => !latest[checklistItemKey(active.id, index)]);
+                if (missing >= 0) {
+                    document.querySelector(`[data-checklist-item="${missing}"]`)?.focus();
+                    return;
+                }
+                checklistPhaseId = phases[(phases.indexOf(active) + 1) % phases.length].id;
+                renderChecklist();
+            });
         }
 
         function loadTelexSettingsForm() {
