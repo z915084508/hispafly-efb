@@ -1644,6 +1644,7 @@
         }
 
         .performance-manual-note,
+        .performance-alert,
         .performance-warnings {
             border: 1px solid rgba(255,196,0,0.30);
             border-radius: 12px;
@@ -1653,6 +1654,10 @@
             color: rgba(255,255,255,0.82);
             font-size: 13px;
             line-height: 1.4;
+        }
+
+        .performance-alert {
+            margin-bottom: 0;
         }
 
         .performance-warnings {

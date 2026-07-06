@@ -24,6 +24,7 @@
         let performanceTab = "flight";
         let takeoffResult = null;
         let landingResult = null;
+        let performanceLoadError = "";
 
         if (!accessToken) {
             window.location.href = "index.html";
@@ -167,7 +168,13 @@
                     renderChecklist();
                 } else if (currentView === "performance") {
                     if (!performanceActiveFlight || force) {
-                        performanceActiveFlight = await loadPerformanceActiveFlight();
+                        try {
+                            performanceActiveFlight = await loadPerformanceActiveFlight();
+                            performanceLoadError = "";
+                        } catch (err) {
+                            performanceActiveFlight = { active: false, mode: "MANUAL" };
+                            performanceLoadError = normalizePerformanceError(err);
+                        }
                         seedPerformanceForms();
                     }
                     if (performanceTab === "history" && (!performanceHistory || force)) {
@@ -709,16 +716,21 @@
         }
 
         async function fetchPerformanceJson(path, options = {}) {
-            const res = await fetch(`${AOC_API_BASE_URL}/api/efb/performance${path}`, {
-                method: options.method || "GET",
-                credentials: "include",
-                headers: {
-                    "Accept": "application/json",
-                    ...(accessToken ? { "Authorization": `Bearer ${accessToken}` } : {}),
-                    ...(options.body ? { "Content-Type": "application/json" } : {})
-                },
-                body: options.body ? JSON.stringify(options.body) : undefined
-            });
+            let res;
+            try {
+                res = await fetch(`${AOC_API_BASE_URL}/api/efb/performance${path}`, {
+                    method: options.method || "GET",
+                    credentials: "include",
+                    headers: {
+                        "Accept": "application/json",
+                        ...(accessToken ? { "Authorization": `Bearer ${accessToken}` } : {}),
+                        ...(options.body ? { "Content-Type": "application/json" } : {})
+                    },
+                    body: options.body ? JSON.stringify(options.body) : undefined
+                });
+            } catch (err) {
+                throw new Error(normalizePerformanceError(err));
+            }
             const text = await res.text();
             let json;
             try {
@@ -734,6 +746,14 @@
                 throw new Error(json.message || json.error || "AOC backend unavailable. Please try again later.");
             }
             return json;
+        }
+
+        function normalizePerformanceError(err) {
+            const message = String(err?.message || err || "");
+            if (/failed to fetch|networkerror|load failed/i.test(message)) {
+                return "AOC backend unavailable. Please try again later.";
+            }
+            return message || "AOC backend unavailable. Please try again later.";
         }
 
         async function loadPerformanceActiveFlight() {
@@ -770,6 +790,7 @@
                         </div>
                         ${performanceStatusBadge(active.readyForDepartureStatus || (active.active ? "PENDING" : "MANUAL"))}
                     </div>
+                    ${performanceLoadError ? `<div class="performance-alert">${escapeHtml(performanceLoadError)} Manual calculation remains available.</div>` : ""}
                     <nav class="performance-tabs" aria-label="Performance sections">${tabs}</nav>
                     <div class="performance-body">${renderPerformanceTab()}</div>
                 </section>
