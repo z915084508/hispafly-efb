@@ -1,0 +1,6 @@
+{
+  "scripts": {
+    "build": "node scripts/validate-build.mjs"
+  },
+  "devDependencies": {}
+}

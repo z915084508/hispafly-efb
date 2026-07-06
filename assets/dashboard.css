@@ -1459,6 +1459,213 @@
             margin-bottom: 12px;
         }
 
+        .performance-shell {
+            display: grid;
+            gap: 14px;
+        }
+
+        .performance-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 16px;
+            padding: 16px;
+            background: rgba(0,0,0,0.28);
+        }
+
+        .performance-banner strong {
+            display: block;
+            font-size: 24px;
+            line-height: 1.12;
+        }
+
+        .performance-banner small,
+        .performance-kicker {
+            display: block;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .performance-tabs {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .performance-tab {
+            min-height: 42px;
+            border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 12px;
+            background: rgba(0,0,0,0.24);
+            color: rgba(255,255,255,0.72);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .performance-tab.active,
+        .performance-tab:hover {
+            border-color: rgba(255,196,0,0.44);
+            background: rgba(255,196,0,0.10);
+            color: #fff;
+        }
+
+        .performance-workbench {
+            display: grid;
+            grid-template-columns: minmax(320px, 1.1fr) minmax(280px, 0.9fr);
+            gap: 14px;
+        }
+
+        .performance-form {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0 12px;
+        }
+
+        .performance-data-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .performance-metric {
+            min-height: 76px;
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 12px;
+            padding: 12px;
+            background: rgba(0,0,0,0.22);
+        }
+
+        .performance-metric span,
+        .performance-result-row span {
+            display: block;
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .performance-metric strong {
+            display: block;
+            margin-top: 8px;
+            color: #fff;
+            font-size: 18px;
+            line-height: 1.15;
+            overflow-wrap: anywhere;
+        }
+
+        .performance-result {
+            display: grid;
+            gap: 8px;
+        }
+
+        .performance-result-row {
+            display: grid;
+            grid-template-columns: minmax(120px, 0.75fr) minmax(0, 1fr);
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding: 9px 0;
+        }
+
+        .performance-result-row strong {
+            color: #fff;
+            font-size: 22px;
+            text-align: right;
+            overflow-wrap: anywhere;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 28px;
+            padding: 0 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.16);
+            background: rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.78);
+            font-size: 11px;
+            font-weight: 900;
+            white-space: nowrap;
+        }
+
+        .status-ok,
+        .status-ready {
+            border-color: rgba(114,240,163,0.45);
+            background: rgba(114,240,163,0.14);
+            color: var(--ok);
+        }
+
+        .status-warning,
+        .status-pending {
+            border-color: rgba(255,196,0,0.42);
+            background: rgba(255,196,0,0.12);
+            color: var(--yellow);
+        }
+
+        .status-failed,
+        .status-error,
+        .status-blocked {
+            border-color: rgba(255,107,107,0.45);
+            background: rgba(255,107,107,0.12);
+            color: var(--danger);
+        }
+
+        .status-not-supported,
+        .status-manual,
+        .status-n-a {
+            color: rgba(255,255,255,0.66);
+        }
+
+        .toggle-field {
+            min-height: 43px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            padding: 0 12px;
+            border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 12px;
+            background: rgba(0,0,0,0.18);
+            color: rgba(255,255,255,0.82);
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .toggle-field input {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--yellow);
+        }
+
+        .performance-manual-note,
+        .performance-warnings {
+            border: 1px solid rgba(255,196,0,0.30);
+            border-radius: 12px;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            background: rgba(255,196,0,0.10);
+            color: rgba(255,255,255,0.82);
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .performance-warnings {
+            display: grid;
+            gap: 6px;
+            margin-top: 12px;
+        }
+
+        .performance-history {
+            display: grid;
+            gap: 10px;
+        }
+
         .live-map-stats {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2043,10 +2250,35 @@
             .dictionary-workbench,
             .live-map-toolbar,
             .live-map-stats,
+            .performance-workbench,
+            .performance-form,
+            .performance-data-grid,
             .windy-meta,
             .windy-search,
             .weather-form {
                 grid-template-columns: 1fr;
+            }
+
+            .performance-banner {
+                align-items: start;
+                flex-direction: column;
+            }
+
+            .performance-banner strong {
+                font-size: 20px;
+            }
+
+            .performance-tabs {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .performance-result-row {
+                grid-template-columns: 1fr;
+                gap: 5px;
+            }
+
+            .performance-result-row strong {
+                text-align: left;
             }
 
             .windy-toolbar {

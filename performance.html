@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>HISPAFLY EFB | Performance</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="assets/dashboard.css">
+</head>
+<body>
+    <main class="app">
+        <div class="status-bar" aria-hidden="true">
+            <span id="utcTime">--:-- UTC</span>
+            <span>HISPAFLY EFB</span>
+            <span class="status-right">
+                <span class="signal">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </span>
+                <span>100%</span>
+            </span>
+        </div>
+
+        <div class="shell">
+            <section class="content">
+                <div class="content-header">
+                    <button class="icon-btn home-btn" id="homeBtn" title="Return home" aria-label="Return home">&#8962;</button>
+                    <div>
+                        <div class="eyebrow" id="viewEyebrow">Performance</div>
+                        <h1 id="viewTitle">EFB Performance</h1>
+                        <p class="subhead" id="viewSubhead">Official and manual takeoff or landing calculations.</p>
+                    </div>
+                    <div class="header-actions">
+                        <button class="refresh-btn" id="refreshBtn">REFRESH</button>
+                        <button class="logout-btn header-logout" id="logoutBtn">LOG OUT</button>
+                    </div>
+                </div>
+                <div class="panel" id="mainPanel">
+                    <p class="empty">Loading performance...</p>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        window.HISPAFLY_INITIAL_VIEW = "performance";
+        window.NEXT_PUBLIC_AOC_API_BASE_URL = window.NEXT_PUBLIC_AOC_API_BASE_URL || "https://aoc.hispafly.es";
+    </script>
+    <script src="assets/reference-data.js"></script>
+    <script src="assets/airport-coordinates.js"></script>
+    <script src="assets/terminology-data.js"></script>
+    <script src="assets/checklist-data.js"></script>
+    <script src="assets/dashboard.js"></script>
+    <script src="assets/telex.js"></script>
+    <script src="assets/cdm.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="assets/live-map.js"></script>
+</body>
+</html>

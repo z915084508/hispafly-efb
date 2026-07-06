@@ -18,6 +18,12 @@
         let abbreviationLoadPromise = null;
         let checklistPhaseId = null;
         let checklistAircraftId = localStorage.getItem("hispafly_checklist_aircraft") || "b737-800";
+        const AOC_API_BASE_URL = (window.NEXT_PUBLIC_AOC_API_BASE_URL || window.HISPAFLY_AOC_API_BASE_URL || "https://aoc.hispafly.es").replace(/\/$/, "");
+        let performanceActiveFlight = null;
+        let performanceHistory = null;
+        let performanceTab = "flight";
+        let takeoffResult = null;
+        let landingResult = null;
 
         if (!accessToken) {
             window.location.href = "index.html";
@@ -49,6 +55,7 @@
                 icon: "assets/app-icons/dictionary.svg",
                 apps: [
                     { view: "checklist", label: "CHECKLIST", subhead: "Interactive flight flows", icon: "assets/app-icons/checklist.svg" },
+                    { view: "performance", label: "PERFORMANCE", subhead: "Takeoff and landing", icon: "assets/app-icons/performance.svg" },
                     { view: "dictionary", label: "Dictionary", subhead: "Pilot terminology", icon: "assets/app-icons/dictionary.svg" }
                 ]
             },
@@ -83,7 +90,7 @@
             } catch (err) {
                 console.warn("Pilot profile unavailable", err);
             }
-            await setView("home");
+            await setView(window.HISPAFLY_INITIAL_VIEW || "home");
         }
 
         async function setView(view) {
@@ -114,7 +121,8 @@
                 telex: ["ACARS", "TELEX", "Hoppie ACARS style logon, inbox, and telex compose station."],
                 cdmAirport: ["Airport CDM", "CDM Airport Status", "Airport departure queue and ATFCM status."],
                 liveMap: ["Live Ops", "Live Flight Map", "Real-time VAMSYS active flight positions."],
-                checklist: ["Flight Deck", "CHECKLIST", "Interactive phase checklists with automatic local progress saving."]
+                checklist: ["Flight Deck", "CHECKLIST", "Interactive phase checklists with automatic local progress saving."],
+                performance: ["Performance", "EFB Performance", "Official and manual takeoff or landing calculations."]
             }[view];
             document.getElementById("viewEyebrow").textContent = copy[0];
             document.getElementById("viewTitle").textContent = copy[1];
@@ -157,6 +165,15 @@
                     renderLiveFlightMap();
                 } else if (currentView === "checklist") {
                     renderChecklist();
+                } else if (currentView === "performance") {
+                    if (!performanceActiveFlight || force) {
+                        performanceActiveFlight = await loadPerformanceActiveFlight();
+                        seedPerformanceForms();
+                    }
+                    if (performanceTab === "history" && (!performanceHistory || force)) {
+                        performanceHistory = await loadPerformanceHistory();
+                    }
+                    renderPerformance();
                 }
             } catch (err) {
                 panel.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
@@ -689,6 +706,473 @@
                 localStorage.removeItem("hpf_telex_settings");
                 document.getElementById("savedTelexCode").value = "";
             });
+        }
+
+        async function fetchPerformanceJson(path, options = {}) {
+            const res = await fetch(`${AOC_API_BASE_URL}/api/efb/performance${path}`, {
+                method: options.method || "GET",
+                credentials: "include",
+                headers: {
+                    "Accept": "application/json",
+                    ...(accessToken ? { "Authorization": `Bearer ${accessToken}` } : {}),
+                    ...(options.body ? { "Content-Type": "application/json" } : {})
+                },
+                body: options.body ? JSON.stringify(options.body) : undefined
+            });
+            const text = await res.text();
+            let json;
+            try {
+                json = text ? JSON.parse(text) : {};
+            } catch (_) {
+                throw new Error(`AOC backend unavailable. Please try again later. (HTTP ${res.status})`);
+            }
+            if (!res.ok) {
+                const code = json.code || json.error;
+                if (res.status === 401) throw new Error("Please log in with your HISPAFLY AOC account.");
+                if (code === "CONNECT_NAVIGRAPH_REQUIRED") throw new Error("Connect Navigraph / SimBrief in AOC before using performance calculations.");
+                if (code === "NAVIGRAPH_RECONNECT_REQUIRED") throw new Error("Reconnect Navigraph / SimBrief in AOC before using performance calculations.");
+                throw new Error(json.message || json.error || "AOC backend unavailable. Please try again later.");
+            }
+            return json;
+        }
+
+        async function loadPerformanceActiveFlight() {
+            return await fetchPerformanceJson("/active-flight");
+        }
+
+        async function loadPerformanceHistory() {
+            const json = await fetchPerformanceJson("/history");
+            return Array.isArray(json.data) ? json.data : (Array.isArray(json.history) ? json.history : (Array.isArray(json) ? json : []));
+        }
+
+        function seedPerformanceForms() {
+            takeoffResult = null;
+            landingResult = null;
+            performanceHistory = null;
+        }
+
+        function renderPerformance() {
+            const active = performanceActiveFlight || { active: false, mode: "MANUAL" };
+            const tabs = [
+                ["flight", "Flight Data"],
+                ["takeoff", "Takeoff Performance"],
+                ["landing", "Landing Performance"],
+                ["history", "History"]
+            ].map(([id, label]) => `<button type="button" class="performance-tab${performanceTab === id ? " active" : ""}" data-performance-tab="${id}">${label}</button>`).join("");
+
+            document.getElementById("mainPanel").innerHTML = `
+                <section class="performance-shell">
+                    <div class="performance-banner">
+                        <div>
+                            <span class="performance-kicker">${escapeHtml(active.mode || "MANUAL")}</span>
+                            <strong>${escapeHtml(active.active ? `${formatValue(active.flightNumber, "Flight")} ${formatValue(active.callsign, "")}`.trim() : "Manual calculation")}</strong>
+                            <small>${escapeHtml(active.active ? `${formatValue(active.departureIcao)} to ${formatValue(active.arrivalIcao)}` : "Manual calculation - not linked to official dispatched flight.")}</small>
+                        </div>
+                        ${performanceStatusBadge(active.readyForDepartureStatus || (active.active ? "PENDING" : "MANUAL"))}
+                    </div>
+                    <nav class="performance-tabs" aria-label="Performance sections">${tabs}</nav>
+                    <div class="performance-body">${renderPerformanceTab()}</div>
+                </section>
+            `;
+
+            document.querySelectorAll("[data-performance-tab]").forEach((button) => {
+                button.addEventListener("click", async () => {
+                    performanceTab = button.dataset.performanceTab;
+                    if (performanceTab === "history" && !performanceHistory) {
+                        document.querySelector(".performance-body").innerHTML = `<p class="empty">Loading performance history...</p>`;
+                        try {
+                            performanceHistory = await loadPerformanceHistory();
+                        } catch (err) {
+                            document.querySelector(".performance-body").innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+                            return;
+                        }
+                    }
+                    renderPerformance();
+                });
+            });
+            bindPerformanceActions();
+        }
+
+        function renderPerformanceTab() {
+            if (performanceTab === "takeoff") return renderTakeoffPerformance();
+            if (performanceTab === "landing") return renderLandingPerformance();
+            if (performanceTab === "history") return renderPerformanceHistory();
+            return renderPerformanceFlightData();
+        }
+
+        function renderPerformanceFlightData() {
+            const flight = performanceActiveFlight || { active: false, mode: "MANUAL" };
+            if (!flight.active) {
+                return `
+                    <section class="card wide">
+                        <h2>Flight Data</h2>
+                        <p class="empty">Manual calculation - not linked to official dispatched flight.</p>
+                    </section>
+                `;
+            }
+            const rows = [
+                ["Flight number", flight.flightNumber],
+                ["Callsign", flight.callsign],
+                ["Route", `${formatValue(flight.departureIcao)} - ${formatValue(flight.arrivalIcao)}`],
+                ["Aircraft type", flight.aircraftType],
+                ["Registration", flight.aircraftRegistration],
+                ["OFP status", flight.ofpStatus],
+                ["Dispatch status", flight.dispatchStatus],
+                ["vAMSYS booking ID", flight.vamsysBookingId],
+                ["Takeoff weight", formatWeight(flight.takeoffWeightKg)],
+                ["Landing weight", formatWeight(flight.landingWeightKg)],
+                ["Ready for Departure", flight.readyForDepartureStatus]
+            ];
+            return `
+                <section class="performance-data card wide">
+                    <h2>Flight Data</h2>
+                    <div class="performance-data-grid">
+                        ${rows.map(([label, value]) => `
+                            <div class="performance-metric">
+                                <span>${escapeHtml(label)}</span>
+                                <strong>${escapeHtml(formatValue(value))}</strong>
+                            </div>
+                        `).join("")}
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderTakeoffPerformance() {
+            const flight = performanceActiveFlight || {};
+            return `
+                <div class="performance-workbench">
+                    <section class="card">
+                        <h2>Takeoff Inputs</h2>
+                        ${performanceModeNotice()}
+                        <div class="performance-form">
+                            ${performanceInput("takeoffAirport", "Airport", flight.departureIcao || "", "LEMD")}
+                            ${performanceInput("takeoffRunway", "Runway", flight.plannedDepartureRunway || "", "36L")}
+                            ${performanceInput("takeoffAircraft", "Aircraft", flight.aircraftType || "", "A20N")}
+                            ${performanceInput("takeoffWeight", "Takeoff weight", flight.takeoffWeightKg || "", "72450", "number")}
+                            ${surfaceSelect("takeoffSurface")}
+                            ${performanceInput("takeoffWind", "Wind", "000/00", "000/00")}
+                            ${performanceInput("takeoffTemperature", "Temperature", "15", "15", "number")}
+                            ${performanceInput("takeoffQnh", "QNH", "1013", "1013", "number")}
+                            ${performanceInput("takeoffFlaps", "Flap setting", "", "Optional")}
+                            ${performanceInput("takeoffThrust", "Thrust setting", "", "Optional")}
+                            ${toggleField("takeoffFlex", "Flex enabled", true)}
+                            ${toggleField("takeoffBleeds", "Bleeds", true)}
+                            ${antiIceSelect()}
+                            ${toggleField("takeoffClimbOpt", "Climb optimization", true)}
+                            ${performanceInput("takeoffShorten", "Runway shorten / TORA override", "", "Optional", "number")}
+                        </div>
+                        <button class="primary-btn" id="calculateTakeoffBtn">CALCULATE TAKEOFF PERFORMANCE</button>
+                    </section>
+                    <section class="card">
+                        <h2>Takeoff Result</h2>
+                        <div id="takeoffResult">${renderTakeoffResult()}</div>
+                    </section>
+                </div>
+            `;
+        }
+
+        function renderLandingPerformance() {
+            const flight = performanceActiveFlight || {};
+            return `
+                <div class="performance-workbench">
+                    <section class="card">
+                        <h2>Landing Inputs</h2>
+                        ${performanceModeNotice()}
+                        <div class="performance-form">
+                            ${performanceInput("landingAirport", "Airport", flight.arrivalIcao || "", "LEVC")}
+                            ${performanceInput("landingRunway", "Runway", flight.plannedArrivalRunway || "", "12")}
+                            ${performanceInput("landingAircraft", "Aircraft", flight.aircraftType || "", "A20N")}
+                            ${performanceInput("landingWeight", "Landing weight", flight.landingWeightKg || "", "63800", "number")}
+                            ${surfaceSelect("landingSurface")}
+                            ${performanceInput("landingWind", "Wind", "000/00", "000/00")}
+                            ${performanceInput("landingTemperature", "Temperature", "15", "15", "number")}
+                            ${performanceInput("landingQnh", "QNH", "1013", "1013", "number")}
+                            ${performanceInput("landingFlaps", "Flap setting", "", "Optional")}
+                            ${performanceInput("landingBrake", "Brake setting", "", "Optional")}
+                            ${toggleField("landingReverser", "Reverser credit", true)}
+                            ${performanceInput("landingVref", "VREF additive", "5", "5", "number")}
+                            ${methodSelect("landingMethod", "Calculation method", [["inflight", "Inflight"], ["dispatch", "Dispatch"]])}
+                            ${methodSelect("landingMargin", "Margin method", [["factored", "Factored"], ["unfactored", "Unfactored"]])}
+                            ${performanceInput("landingShorten", "LDA override", "", "Optional", "number")}
+                        </div>
+                        <button class="primary-btn" id="calculateLandingBtn">CALCULATE LANDING PERFORMANCE</button>
+                    </section>
+                    <section class="card">
+                        <h2>Landing Result</h2>
+                        <div id="landingResult">${renderLandingResult()}</div>
+                    </section>
+                </div>
+            `;
+        }
+
+        function renderPerformanceHistory() {
+            const list = performanceHistory || [];
+            if (!list.length) {
+                return `<section class="card wide"><h2>History</h2><p class="empty">No performance calculations returned.</p></section>`;
+            }
+            return `
+                <section class="card wide">
+                    <h2>History</h2>
+                    <div class="performance-history">
+                        ${list.map((item) => `
+                            <article class="item">
+                                <div class="item-title">
+                                    <span>${escapeHtml(formatValue(item.type))} / ${escapeHtml(formatValue(item.mode))}</span>
+                                    ${performanceStatusBadge(item.status)}
+                                </div>
+                                <div class="meta">
+                                    <span>Airport: ${escapeHtml(formatValue(item.airportIcao || item.airport))}</span>
+                                    <span>Runway: ${escapeHtml(formatValue(item.runway))}</span>
+                                    <span>Weight: ${escapeHtml(formatWeight(item.weightKg))}</span>
+                                    <span>Created: ${escapeHtml(formatDate(item.createdAt || item.created_at))}</span>
+                                </div>
+                            </article>
+                        `).join("")}
+                    </div>
+                </section>
+            `;
+        }
+
+        function bindPerformanceActions() {
+            const takeoffBtn = document.getElementById("calculateTakeoffBtn");
+            if (takeoffBtn) takeoffBtn.addEventListener("click", calculateTakeoffPerformance);
+            const landingBtn = document.getElementById("calculateLandingBtn");
+            if (landingBtn) landingBtn.addEventListener("click", calculateLandingPerformance);
+            const readyBtn = document.getElementById("readyForDepartureBtn");
+            if (readyBtn) readyBtn.addEventListener("click", markReadyForDeparture);
+        }
+
+        async function calculateTakeoffPerformance() {
+            await runPerformanceAction("takeoffResult", async () => {
+                const result = await fetchPerformanceJson("/takeoff", { method: "POST", body: takeoffPayload() });
+                takeoffResult = result.data || result;
+                performanceHistory = null;
+                return renderTakeoffResult();
+            });
+        }
+
+        async function calculateLandingPerformance() {
+            await runPerformanceAction("landingResult", async () => {
+                const result = await fetchPerformanceJson("/landing", { method: "POST", body: landingPayload() });
+                landingResult = result.data || result;
+                performanceHistory = null;
+                return renderLandingResult();
+            });
+        }
+
+        async function markReadyForDeparture() {
+            if (["WARNING", "NOT_SUPPORTED"].includes(String(takeoffResult?.status || "").toUpperCase())) {
+                if (!window.confirm("Takeoff performance returned a warning. Mark Ready for Departure with warning?")) return;
+            }
+            await runPerformanceAction("takeoffResult", async () => {
+                const result = await fetchPerformanceJson("/ready-for-departure", {
+                    method: "POST",
+                    body: {
+                        flightDispatchId: performanceActiveFlight?.flightDispatchId
+                    }
+                });
+                performanceActiveFlight = await loadPerformanceActiveFlight().catch(() => performanceActiveFlight);
+                return `${renderTakeoffResult()}<p class="ok" style="margin-top:12px;">${escapeHtml(result.message || "Ready for Departure updated.")}</p>`;
+            });
+        }
+
+        async function runPerformanceAction(targetId, action) {
+            const target = document.getElementById(targetId);
+            target.innerHTML = `<p class="empty">Sending performance request to AOC...</p>`;
+            try {
+                target.innerHTML = await action();
+                bindPerformanceActions();
+            } catch (err) {
+                target.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+            }
+        }
+
+        function takeoffPayload() {
+            const flight = performanceActiveFlight || {};
+            return {
+                mode: flight.active ? "OFFICIAL" : "MANUAL",
+                flightDispatchId: flight.flightDispatchId || null,
+                ofpBriefingId: flight.ofpBriefingId || null,
+                airport: fieldValue("takeoffAirport").toUpperCase(),
+                runway: fieldValue("takeoffRunway").toUpperCase(),
+                aircraft: fieldValue("takeoffAircraft").toUpperCase(),
+                aircraftRegistration: flight.aircraftRegistration || null,
+                weightKg: numberField("takeoffWeight"),
+                surfaceCondition: fieldValue("takeoffSurface") || "dry",
+                wind: fieldValue("takeoffWind") || "000/00",
+                temperature: numberField("takeoffTemperature"),
+                qnh: numberField("takeoffQnh"),
+                flapSetting: optionalField("takeoffFlaps"),
+                thrustSetting: optionalField("takeoffThrust"),
+                enableFlex: document.getElementById("takeoffFlex").checked,
+                enableBleeds: document.getElementById("takeoffBleeds").checked,
+                enableAntiIce: fieldValue("takeoffAntiIce") || "auto",
+                enableClimbOptimization: document.getElementById("takeoffClimbOpt").checked,
+                runwayShorten: optionalNumberField("takeoffShorten"),
+                shortenUnits: "tora"
+            };
+        }
+
+        function landingPayload() {
+            const flight = performanceActiveFlight || {};
+            return {
+                mode: flight.active ? "OFFICIAL" : "MANUAL",
+                flightDispatchId: flight.flightDispatchId || null,
+                ofpBriefingId: flight.ofpBriefingId || null,
+                airport: fieldValue("landingAirport").toUpperCase(),
+                runway: fieldValue("landingRunway").toUpperCase(),
+                aircraft: fieldValue("landingAircraft").toUpperCase(),
+                aircraftRegistration: flight.aircraftRegistration || null,
+                weightKg: numberField("landingWeight"),
+                surfaceCondition: fieldValue("landingSurface") || "dry",
+                wind: fieldValue("landingWind") || "000/00",
+                temperature: numberField("landingTemperature"),
+                qnh: numberField("landingQnh"),
+                flapSetting: optionalField("landingFlaps"),
+                brakeSetting: optionalField("landingBrake"),
+                reverserCredit: document.getElementById("landingReverser").checked,
+                vrefAdditive: numberField("landingVref"),
+                calculationMethod: fieldValue("landingMethod") || "inflight",
+                marginMethod: fieldValue("landingMargin") || "factored",
+                runwayShorten: optionalNumberField("landingShorten"),
+                shortenUnits: "lda"
+            };
+        }
+
+        function renderTakeoffResult() {
+            if (!takeoffResult) return `<p class="empty">No takeoff calculation yet.</p>`;
+            const summary = takeoffResult.summary || {};
+            const rows = [
+                ["Airport / runway", `${formatValue(takeoffResult.airportIcao)} ${formatValue(takeoffResult.runway, "")}`],
+                ["TOW", formatWeight(takeoffResult.weightKg)],
+                ["Flaps", summary.flaps],
+                ["Thrust / Flex", [summary.thrust, summary.flexTemp ? `F${summary.flexTemp}` : ""].filter(Boolean).join(" / ")],
+                ["V1", summary.v1],
+                ["VR", summary.vr],
+                ["V2", summary.v2],
+                ["Max TOW", formatWeight(summary.maxWeightKg)],
+                ["Margin", formatWeight(summary.marginKg)],
+                ["Status", takeoffResult.status]
+            ];
+            return `
+                ${performanceResultRows(rows)}
+                ${renderPerformanceWarnings(takeoffResult.warnings)}
+                ${renderReadyForDepartureButton()}
+            `;
+        }
+
+        function renderLandingResult() {
+            if (!landingResult) return `<p class="empty">No landing calculation yet.</p>`;
+            const summary = landingResult.summary || {};
+            const rows = [
+                ["Airport / runway", `${formatValue(landingResult.airportIcao)} ${formatValue(landingResult.runway, "")}`],
+                ["Landing weight", formatWeight(landingResult.weightKg)],
+                ["Flaps", summary.flaps],
+                ["Brake", summary.brake],
+                ["Required distance", formatMeters(summary.requiredDistanceM)],
+                ["Available distance", formatMeters(summary.availableDistanceM)],
+                ["Margin", formatMeters(summary.marginM)],
+                ["Max landing weight", formatWeight(summary.maxLandingWeightKg)],
+                ["Status", landingResult.status]
+            ];
+            return `${performanceResultRows(rows)}${renderPerformanceWarnings(landingResult.warnings)}<p class="empty" style="margin-top:12px;">Landing performance is advisory for approach preparation.</p>`;
+        }
+
+        function renderReadyForDepartureButton() {
+            const status = String(takeoffResult?.status || "").toUpperCase();
+            if (!performanceActiveFlight?.active || String(takeoffResult?.mode || "").toUpperCase() !== "OFFICIAL") {
+                return `<p class="empty" style="margin-top:12px;">Manual calculation cannot mark official Ready for Departure.</p>`;
+            }
+            if (["FAILED", "ERROR"].includes(status)) {
+                return `<p class="error" style="margin-top:12px;">Ready for Departure is blocked by this takeoff result.</p>`;
+            }
+            if (["OK", "WARNING", "NOT_SUPPORTED"].includes(status)) {
+                return `<button class="primary-btn" id="readyForDepartureBtn" style="margin-top:14px;">MARK READY FOR DEPARTURE</button>`;
+            }
+            return "";
+        }
+
+        function performanceResultRows(rows) {
+            return `
+                <div class="performance-result">
+                    ${rows.map(([label, value]) => `
+                        <div class="performance-result-row">
+                            <span>${escapeHtml(label)}</span>
+                            <strong>${label === "Status" ? performanceStatusBadge(value) : escapeHtml(formatValue(value))}</strong>
+                        </div>
+                    `).join("")}
+                </div>
+            `;
+        }
+
+        function renderPerformanceWarnings(warnings) {
+            if (!Array.isArray(warnings) || !warnings.length) return "";
+            return `<div class="performance-warnings">${warnings.map((warning) => `<p>${escapeHtml(typeof warning === "string" ? warning : (warning.message || JSON.stringify(warning)))}</p>`).join("")}</div>`;
+        }
+
+        function performanceInput(id, label, value, placeholder, type = "text") {
+            return `<div class="field"><label for="${id}">${escapeHtml(label)}</label><input id="${id}" type="${type}" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}"></div>`;
+        }
+
+        function surfaceSelect(id) {
+            return methodSelect(id, "Surface condition", [["dry", "Dry"], ["wet", "Wet"]]);
+        }
+
+        function antiIceSelect() {
+            return methodSelect("takeoffAntiIce", "Anti-ice", [["auto", "Auto"], ["on", "On"], ["off", "Off"]]);
+        }
+
+        function methodSelect(id, label, options) {
+            return `<div class="field"><label for="${id}">${escapeHtml(label)}</label><select id="${id}">${options.map(([value, text]) => `<option value="${escapeHtml(value)}">${escapeHtml(text)}</option>`).join("")}</select></div>`;
+        }
+
+        function toggleField(id, label, checked) {
+            return `<label class="toggle-field"><input id="${id}" type="checkbox"${checked ? " checked" : ""}><span>${escapeHtml(label)}</span></label>`;
+        }
+
+        function performanceModeNotice() {
+            if (performanceActiveFlight?.active) return "";
+            return `<p class="performance-manual-note">Manual calculation - not linked to official dispatched flight.</p>`;
+        }
+
+        function performanceStatusBadge(status) {
+            const value = String(formatValue(status, "N/A")).toUpperCase();
+            return `<span class="status-badge status-${escapeHtml(value.toLowerCase().replace(/[^a-z0-9]+/g, "-"))}">${escapeHtml(value)}</span>`;
+        }
+
+        function fieldValue(id) {
+            return document.getElementById(id)?.value.trim() || "";
+        }
+
+        function optionalField(id) {
+            return fieldValue(id) || null;
+        }
+
+        function numberField(id) {
+            const value = Number(fieldValue(id));
+            if (!Number.isFinite(value)) throw new Error(`${document.querySelector(`label[for="${id}"]`)?.textContent || id} is required.`);
+            return value;
+        }
+
+        function optionalNumberField(id) {
+            const raw = fieldValue(id);
+            if (!raw) return null;
+            const value = Number(raw);
+            if (!Number.isFinite(value)) throw new Error(`${document.querySelector(`label[for="${id}"]`)?.textContent || id} must be a number.`);
+            return value;
+        }
+
+        function formatWeight(value) {
+            if (value === undefined || value === null || value === "") return "N/A";
+            const number = Number(value);
+            return Number.isFinite(number) ? `${number.toLocaleString()} kg` : value;
+        }
+
+        function formatMeters(value) {
+            if (value === undefined || value === null || value === "") return "N/A";
+            const number = Number(value);
+            return Number.isFinite(number) ? `${number.toLocaleString()} m` : value;
         }
 
         function renderPirepLogbook() {
