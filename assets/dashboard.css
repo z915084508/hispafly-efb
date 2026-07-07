@@ -1492,7 +1492,7 @@
 
         .performance-tabs {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(5, minmax(0, 1fr));
             gap: 8px;
         }
 
@@ -1518,6 +1518,932 @@
             display: grid;
             grid-template-columns: minmax(320px, 1.1fr) minmax(280px, 0.9fr);
             gap: 14px;
+        }
+
+        .flysmart-workbench {
+            grid-template-columns: minmax(280px, 0.34fr) minmax(620px, 1fr);
+            gap: 0;
+            overflow: hidden;
+            border: 1px solid rgba(0,0,0,0.55);
+            border-radius: 4px;
+            background:
+                linear-gradient(90deg, rgba(255,255,255,0.10), rgba(0,0,0,0.06)),
+                repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 1px, rgba(0,0,0,0.035) 1px 3px),
+                #989896;
+            color: #fff;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16);
+        }
+
+        .flysmart-side-panel {
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            gap: 12px;
+            padding: 14px 12px;
+            border-right: 3px solid #252525;
+            background:
+                repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0 1px, rgba(0,0,0,0.035) 1px 3px),
+                #999997;
+        }
+
+        .flysmart-title {
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #43515d;
+            font-size: 22px;
+            font-weight: 900;
+            letter-spacing: 0;
+            text-transform: uppercase;
+        }
+
+        .flysmart-inputs {
+            display: grid;
+            gap: 18px;
+            align-content: start;
+        }
+
+        .flysmart-group {
+            display: grid;
+            border: 1px solid rgba(255,255,255,0.16);
+            background: #454545;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 7px rgba(0,0,0,0.22);
+        }
+
+        .flysmart-group .field,
+        .flysmart-group .toggle-field {
+            position: relative;
+            min-height: 38px;
+            display: grid;
+            grid-template-columns: minmax(96px, 0.88fr) minmax(0, 1fr);
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+            padding: 0 12px;
+            border: 0;
+            border-bottom: 1px solid rgba(255,255,255,0.36);
+            border-radius: 0;
+            background: transparent;
+        }
+
+        .flysmart-group .field:last-child,
+        .flysmart-group .toggle-field:last-child {
+            border-bottom: 0;
+        }
+
+        .flysmart-group .field label,
+        .flysmart-group .toggle-field span {
+            color: #fff;
+            font-size: 15px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .flysmart-group input,
+        .flysmart-group select {
+            min-height: 30px;
+            border: 1px solid transparent;
+            border-radius: 0;
+            background: transparent;
+            color: #fff;
+            padding: 2px 0;
+            font-size: 18px;
+            font-weight: 900;
+            text-align: right;
+        }
+
+        .flysmart-group .field:focus-within {
+            background: linear-gradient(#83a8ca, #5e7f9d);
+        }
+
+        .flysmart-landing-side .flysmart-group .field:nth-child(n+2)::after {
+            content: "";
+            width: 21px;
+            height: 21px;
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-radius: 50%;
+            background:
+                linear-gradient(135deg, transparent 0 38%, #4b5156 38% 48%, transparent 48%),
+                radial-gradient(circle at 50% 50%, #ffd25b 0 60%, #d99016 61% 100%);
+            box-shadow: inset 0 1px 1px rgba(255,255,255,0.5);
+            pointer-events: none;
+        }
+
+        .flysmart-landing-side .flysmart-group select,
+        .flysmart-landing-side .flysmart-group input {
+            padding-right: 32px;
+        }
+
+        .flysmart-group select {
+            padding-right: 22px;
+            text-align-last: right;
+        }
+
+        .flysmart-group input:focus,
+        .flysmart-group select:focus {
+            outline: 2px solid #59ff58;
+            outline-offset: -2px;
+            background: rgba(0,0,0,0.24);
+        }
+
+        .flysmart-group .toggle-field {
+            grid-template-columns: 24px minmax(0, 1fr);
+            color: #fff;
+            font-size: 15px;
+            font-weight: 900;
+        }
+
+        .flysmart-group .toggle-field input {
+            width: 18px;
+            height: 18px;
+            accent-color: #59ff58;
+        }
+
+        .flysmart-compute-btn {
+            min-height: 46px;
+            border-radius: 2px;
+            border: 1px solid rgba(255,255,255,0.28);
+            background: #2f2f2f;
+            color: #59ff58;
+            font-size: 15px;
+            letter-spacing: 0;
+        }
+
+        .flysmart-main-panel {
+            min-width: 0;
+            background:
+                repeating-linear-gradient(0deg, rgba(255,255,255,0.045) 0 1px, rgba(0,0,0,0.035) 1px 3px),
+                #8d8e8c;
+        }
+
+        .flysmart-strip-title {
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            padding: 0 22px;
+            border-bottom: 1px solid rgba(0,0,0,0.36);
+            background: #c8c8c8;
+            color: #43515d;
+            font-size: 22px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .flysmart-output-grid {
+            display: grid;
+            grid-template-columns: minmax(230px, 0.9fr) minmax(210px, 0.76fr) minmax(145px, 0.48fr);
+            gap: 18px;
+            padding: 34px 18px 28px;
+            align-items: stretch;
+        }
+
+        .flysmart-result-panel,
+        .flysmart-procedure-panel {
+            min-width: 0;
+            background: #404040;
+            color: #fff;
+        }
+
+        .flysmart-result-panel {
+            align-self: start;
+        }
+
+        .flysmart-result-heading {
+            padding: 10px 14px 7px;
+            border-bottom: 1px solid rgba(255,255,255,0.36);
+            color: #fff;
+            font-size: 18px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .flysmart-main-panel .performance-result {
+            gap: 0;
+        }
+
+        .flysmart-main-panel .performance-result-row {
+            min-height: 39px;
+            grid-template-columns: minmax(110px, 0.9fr) minmax(0, 1fr);
+            gap: 10px;
+            padding: 0 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.36);
+        }
+
+        .flysmart-main-panel .performance-result-row span {
+            color: #fff;
+            font-size: 15px;
+        }
+
+        .flysmart-main-panel .performance-result-row strong {
+            color: #59ff58;
+            font-size: 20px;
+            line-height: 1;
+        }
+
+        .flysmart-main-panel .status-badge {
+            border-radius: 0;
+            border-color: rgba(89,255,88,0.48);
+            background: rgba(89,255,88,0.12);
+            color: #59ff58;
+        }
+
+        .flysmart-hint {
+            margin: 12px 14px 14px;
+            color: #59ff58;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .flysmart-procedure-panel {
+            padding: 12px 14px;
+            font-size: 16px;
+            font-weight: 800;
+            line-height: 1.32;
+        }
+
+        .flysmart-procedure-panel h3 {
+            margin: 0 0 8px;
+            font-size: 16px;
+            text-transform: uppercase;
+        }
+
+        .flysmart-procedure-panel p {
+            margin: 0;
+        }
+
+        .flysmart-procedure-panel strong {
+            display: block;
+            margin-top: 16px;
+            color: #59ff58;
+            font-size: 14px;
+        }
+
+        .flysmart-runway-panel {
+            display: grid;
+            justify-items: center;
+            align-content: start;
+            gap: 10px;
+            min-width: 0;
+            color: #59ff58;
+            font-weight: 900;
+            text-align: center;
+        }
+
+        .flysmart-runway-panel.landing {
+            position: relative;
+            align-self: center;
+            justify-self: end;
+            padding-right: 22px;
+        }
+
+        .flysmart-runway-status {
+            min-height: 44px;
+            display: grid;
+            align-content: center;
+            color: #59ff58;
+            font-size: 16px;
+            text-transform: uppercase;
+        }
+
+        .flysmart-runway-panel.landing .flysmart-runway-status {
+            position: absolute;
+            top: 28px;
+            right: 118px;
+            color: #ff2020;
+            font-size: 14px;
+            line-height: 1.05;
+        }
+
+        .flysmart-runway-status span {
+            display: block;
+            font-size: 12px;
+            line-height: 1.1;
+        }
+
+        .flysmart-runway {
+            position: relative;
+            width: 78px;
+            height: 310px;
+            background: #030303;
+            border-top: 8px solid #fff;
+            border-bottom: 8px solid #fff;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.14);
+        }
+
+        .flysmart-runway-panel.landing .flysmart-runway {
+            height: 430px;
+            width: 84px;
+            border-top-width: 7px;
+            border-bottom-width: 7px;
+        }
+
+        .flysmart-runway::before {
+            content: "";
+            position: absolute;
+            top: 18px;
+            bottom: 18px;
+            left: 50%;
+            width: 4px;
+            transform: translateX(-50%);
+            background: repeating-linear-gradient(to bottom, #fff 0 34px, transparent 34px 68px);
+        }
+
+        .flysmart-runway::after {
+            content: "";
+            position: absolute;
+            left: -14px;
+            right: -14px;
+            top: 48%;
+            height: 7px;
+            background: #59ff58;
+        }
+
+        .flysmart-runway strong {
+            position: absolute;
+            bottom: 22px;
+            left: 0;
+            right: 0;
+            color: #fff;
+            font-size: 22px;
+            line-height: 1;
+        }
+
+        .flysmart-runway small {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            writing-mode: vertical-rl;
+            color: #fff;
+            font-size: 27px;
+            font-weight: 900;
+            letter-spacing: 0;
+            transform: rotate(180deg);
+        }
+
+        .flysmart-runway-threshold {
+            position: absolute;
+            left: 6px;
+            right: 6px;
+            height: 28px;
+            background: repeating-linear-gradient(90deg, #fff 0 4px, transparent 4px 8px);
+        }
+
+        .flysmart-runway-threshold.top {
+            top: 4px;
+        }
+
+        .flysmart-runway-threshold.bottom {
+            bottom: 4px;
+        }
+
+        .flysmart-runway-dash {
+            display: none;
+        }
+
+        .flysmart-runway-tag {
+            min-width: 90px;
+            min-height: 34px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            background: linear-gradient(#88c5f3, #3276b7);
+            color: #fff;
+            font-size: 17px;
+            font-weight: 800;
+        }
+
+        .flysmart-runway-panel.landing .flysmart-runway-tag {
+            display: none;
+        }
+
+        .flysmart-runway-scale {
+            position: absolute;
+            right: 0;
+            bottom: 118px;
+            min-height: 82px;
+            padding-right: 9px;
+            border-right: 2px solid #111;
+            color: #111;
+            writing-mode: vertical-rl;
+            font-size: 18px;
+            font-weight: 900;
+        }
+
+        .flysmart-wind-arrow {
+            position: absolute;
+            right: 136px;
+            top: 78px;
+            width: 72px;
+            height: 62px;
+            color: #59ff58;
+            font-weight: 900;
+        }
+
+        .flysmart-wind-arrow::before,
+        .flysmart-wind-arrow::after {
+            content: "";
+            position: absolute;
+            background: #59ff58;
+        }
+
+        .flysmart-wind-arrow::before {
+            width: 56px;
+            height: 4px;
+            top: 12px;
+            left: 5px;
+        }
+
+        .flysmart-wind-arrow::after {
+            width: 4px;
+            height: 43px;
+            top: 12px;
+            left: 5px;
+        }
+
+        .flysmart-wind-arrow span {
+            position: absolute;
+            right: 7px;
+            top: 6px;
+            width: 16px;
+            height: 16px;
+            border-top: 4px solid #59ff58;
+            border-right: 4px solid #59ff58;
+            transform: rotate(45deg);
+        }
+
+        .flysmart-wind-arrow strong,
+        .flysmart-wind-arrow em {
+            position: absolute;
+            font-style: normal;
+            font-size: 16px;
+        }
+
+        .flysmart-wind-arrow strong {
+            right: 0;
+            top: 0;
+        }
+
+        .flysmart-wind-arrow em {
+            left: 0;
+            bottom: 0;
+        }
+
+        .flysmart-landing-workbench {
+            grid-template-columns: minmax(276px, 0.28fr) minmax(720px, 1fr);
+        }
+
+        .flysmart-landing-side {
+            padding: 8px 10px 10px;
+            gap: 8px;
+        }
+
+        .flysmart-mode-toggle {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 36px;
+            border: 1px solid rgba(0,0,0,0.28);
+            border-radius: 5px;
+            overflow: hidden;
+            background: linear-gradient(#f5f5f5, #c7c9cb);
+            color: #454b50;
+            font-size: 15px;
+            font-weight: 900;
+            text-align: center;
+        }
+
+        .flysmart-mode-toggle span {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .flysmart-mode-toggle .active {
+            background: linear-gradient(#54bde8, #238fc0);
+            color: #fff;
+        }
+
+        .flysmart-landing-topbar {
+            min-height: 54px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #d1d1d3;
+            color: #43515d;
+            border-bottom: 1px solid rgba(0,0,0,0.35);
+            font-size: 25px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .flysmart-landing-topbar span {
+            padding: 0 22px;
+            border-right: 1px solid rgba(70,80,88,0.34);
+        }
+
+        .flysmart-landing-topbar span:last-child {
+            border-right: 0;
+        }
+
+        .flysmart-landing-subbar {
+            min-height: 38px;
+            justify-content: space-between;
+            background: linear-gradient(#fbfbfb, #cfd3d6);
+            font-size: 19px;
+        }
+
+        .flysmart-landing-stage {
+            min-height: 610px;
+            display: grid;
+            grid-template-columns: minmax(260px, 0.42fr) minmax(260px, 0.42fr) minmax(170px, 0.2fr);
+            gap: 18px;
+            align-items: start;
+            padding: 24px 12px 18px;
+            border-left: 1px solid rgba(0,0,0,0.32);
+            border-right: 1px solid rgba(0,0,0,0.32);
+        }
+
+        .flysmart-landing-result {
+            width: min(310px, 100%);
+            justify-self: start;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.24);
+        }
+
+        .flysmart-landing-result .performance-result-row {
+            min-height: 42px;
+        }
+
+        .flysmart-landing-result .performance-result-row span {
+            font-size: 17px;
+        }
+
+        .flysmart-landing-message {
+            min-height: 128px;
+            align-self: start;
+            padding: 16px;
+            border-radius: 8px;
+            background: #3a3a3a;
+            color: #fff;
+            font-size: 18px;
+            font-weight: 900;
+            line-height: 1.35;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.24);
+        }
+
+        .flysmart-landing-message.muted {
+            grid-column: 1 / 3;
+            justify-self: center;
+            align-self: center;
+            min-height: 0;
+            background: transparent;
+            box-shadow: none;
+            color: #111;
+            font-size: 17px;
+            font-weight: 700;
+        }
+
+        .flysmart-landing-message.warning strong {
+            display: block;
+            max-width: 260px;
+            margin-bottom: 18px;
+            padding: 12px 14px;
+            border-radius: 8px;
+            background: #ed0000;
+            color: #fff;
+            text-align: center;
+        }
+
+        .flysmart-landing-message.ok strong {
+            display: block;
+            margin-bottom: 12px;
+            color: #59ff58;
+        }
+
+        .flysmart-status-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .flysmart-status-buttons span {
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(0,0,0,0.22);
+            border-radius: 6px;
+            background: linear-gradient(#e8eaec, #8d949b);
+            color: #fff;
+            font-size: 16px;
+            font-weight: 900;
+            text-shadow: 0 1px 1px rgba(0,0,0,0.35);
+        }
+
+        .flysmart-action-row {
+            display: grid;
+            grid-template-columns: 0.62fr 1fr;
+            gap: 10px;
+        }
+
+        .flysmart-action-row .inline-btn,
+        .flysmart-action-row .primary-btn {
+            min-height: 42px;
+            border-radius: 7px;
+            font-size: 17px;
+            font-weight: 900;
+        }
+
+        .flysmart-action-row .primary-btn {
+            background: linear-gradient(#fff, #ced2d6);
+            color: #4f5962;
+        }
+
+        .flysmart-bottom-nav {
+            min-height: 58px;
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            align-items: center;
+            border-top: 1px solid rgba(0,0,0,0.28);
+            background: linear-gradient(#f2f3f5, #b7bdc5);
+            color: #606a72;
+            font-size: 26px;
+            text-align: center;
+        }
+
+        .flysmart-bottom-nav span {
+            min-height: 58px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .flysmart-bottom-nav .active {
+            background: linear-gradient(#c8d0d8, #87929e);
+            color: #fff;
+        }
+
+        .loadsheet-workbench {
+            grid-template-columns: minmax(290px, 0.34fr) minmax(680px, 1fr);
+            background:
+                linear-gradient(90deg, rgba(255,255,255,0.18), rgba(255,255,255,0.04) 36%, rgba(0,0,0,0.12)),
+                #9b9b99;
+        }
+
+        .loadsheet-side-panel {
+            padding-bottom: 18px;
+            background:
+                linear-gradient(90deg, rgba(255,255,255,0.16), rgba(0,0,0,0.08)),
+                #8f908e;
+        }
+
+        .loadsheet-group {
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+        }
+
+        .loadsheet-line {
+            min-height: 52px;
+            display: grid;
+            grid-template-columns: minmax(116px, 0.9fr) minmax(0, 1fr);
+            align-items: center;
+            gap: 10px;
+            padding: 0 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.30);
+            color: #fff;
+        }
+
+        .loadsheet-line:last-child {
+            border-bottom: 0;
+        }
+
+        .loadsheet-line span {
+            font-size: 19px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .loadsheet-line strong {
+            min-width: 0;
+            color: #fff;
+            font-size: 21px;
+            font-weight: 900;
+            text-align: right;
+            overflow-wrap: anywhere;
+        }
+
+        .loadsheet-strip {
+            justify-content: space-between;
+        }
+
+        .loadsheet-strip span:last-child {
+            color: #161616;
+            font-size: 18px;
+        }
+
+        .loadsheet-results {
+            display: grid;
+            gap: 14px;
+            padding: 14px 18px 18px;
+        }
+
+        .loadsheet-underload {
+            min-height: 58px;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            border: 1px solid rgba(0,0,0,0.36);
+            border-radius: 12px;
+            background: linear-gradient(#4a4a4a, #343434);
+            color: #59ff58;
+            font-size: 25px;
+            font-weight: 900;
+            text-transform: uppercase;
+            box-shadow: 0 2px 7px rgba(0,0,0,0.26);
+        }
+
+        .loadsheet-chart {
+            min-height: 320px;
+            border: 1px solid rgba(0,0,0,0.36);
+            border-radius: 12px;
+            overflow: hidden;
+            background: #404040;
+            box-shadow: 0 2px 7px rgba(0,0,0,0.26);
+        }
+
+        .loadsheet-chart svg {
+            display: block;
+            width: 100%;
+            height: auto;
+            min-height: 320px;
+        }
+
+        .loadsheet-grid-line {
+            stroke: rgba(230,235,240,0.55);
+            stroke-width: 1;
+        }
+
+        .loadsheet-envelope {
+            fill: none;
+            stroke-width: 5;
+            stroke-linejoin: round;
+            stroke-linecap: round;
+        }
+
+        .loadsheet-envelope.mtow {
+            stroke: #26ff2f;
+        }
+
+        .loadsheet-envelope.mzfw {
+            stroke: #ffd200;
+        }
+
+        .loadsheet-path {
+            fill: none;
+            stroke: rgba(255,255,255,0.70);
+            stroke-width: 3;
+        }
+
+        .loadsheet-dashed {
+            stroke: rgba(255,255,255,0.70);
+            stroke-width: 2;
+            stroke-dasharray: 8 8;
+        }
+
+        .loadsheet-point {
+            stroke: rgba(0,0,0,0.34);
+            stroke-width: 2;
+        }
+
+        .loadsheet-point.zfw {
+            fill: #ffd200;
+        }
+
+        .loadsheet-point.tow {
+            fill: #26ff2f;
+        }
+
+        .loadsheet-point.lw {
+            fill: #ff63b2;
+        }
+
+        .loadsheet-chart-label {
+            font-size: 17px;
+            font-weight: 900;
+        }
+
+        .loadsheet-chart-label.mtow {
+            fill: #26ff2f;
+        }
+
+        .loadsheet-chart-label.mzfw {
+            fill: #ffd200;
+        }
+
+        .loadsheet-axis {
+            fill: #fff;
+            font-size: 13px;
+            font-weight: 900;
+        }
+
+        .loadsheet-table {
+            border: 1px solid rgba(255,255,255,0.24);
+            border-radius: 10px;
+            overflow: hidden;
+            background: #3d3d3d;
+            box-shadow: 0 2px 7px rgba(0,0,0,0.26);
+        }
+
+        .loadsheet-table-head,
+        .loadsheet-table-row {
+            display: grid;
+            grid-template-columns: minmax(160px, 1.1fr) minmax(100px, 0.9fr) minmax(90px, 0.8fr);
+            align-items: center;
+        }
+
+        .loadsheet-table-head {
+            min-height: 54px;
+            background: linear-gradient(#c7ccd0, #868d92);
+            color: #fff;
+            font-size: 22px;
+            font-weight: 900;
+            text-align: right;
+        }
+
+        .loadsheet-table-head strong {
+            padding: 0 14px;
+        }
+
+        .loadsheet-table-row {
+            min-height: 50px;
+            border-top: 1px solid rgba(255,255,255,0.26);
+            color: #fff;
+            font-size: 22px;
+            font-weight: 900;
+        }
+
+        .loadsheet-table-row span {
+            padding: 0 14px;
+            text-transform: uppercase;
+        }
+
+        .loadsheet-table-row strong {
+            padding: 0 14px;
+            color: #59ff58;
+            text-align: right;
+        }
+
+        .loadsheet-table-row.is-zfw {
+            color: #ffd200;
+            outline: 2px solid #ffd200;
+            outline-offset: -2px;
+        }
+
+        .loadsheet-table-row.is-tow {
+            color: #59ff58;
+            outline: 2px solid #26ff2f;
+            outline-offset: -2px;
+        }
+
+        .loadsheet-table-row.is-lw {
+            color: #ff63b2;
+            outline: 2px solid #ff63b2;
+            outline-offset: -2px;
+        }
+
+        .loadsheet-table-row.is-lw strong {
+            color: #59ff58;
+        }
+
+        .loadsheet-trim {
+            min-height: 58px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0 0 10px 10px;
+            background: #3b3b3b;
+            color: #59ff58;
+            font-size: 22px;
+            font-weight: 900;
+            text-align: center;
+        }
+
+        .loadsheet-disclaimer {
+            margin: 0;
+            color: rgba(255,255,255,0.62);
+            font-size: 11px;
+            font-weight: 800;
+            text-align: center;
+            text-transform: uppercase;
         }
 
         .performance-form {
@@ -1644,6 +2570,7 @@
         }
 
         .performance-manual-note,
+        .performance-wx-note,
         .performance-alert,
         .performance-warnings {
             border: 1px solid rgba(255,196,0,0.30);
@@ -1658,6 +2585,31 @@
 
         .performance-alert {
             margin-bottom: 0;
+        }
+
+        .performance-wx-note {
+            border-color: rgba(114,240,163,0.28);
+            background: rgba(114,240,163,0.08);
+            color: rgba(255,255,255,0.76);
+        }
+
+        .flysmart-inputs .performance-manual-note,
+        .flysmart-inputs .performance-wx-note {
+            margin: 0;
+            border-radius: 2px;
+            border-color: rgba(0,0,0,0.24);
+            background: #4f4f4f;
+            color: #59ff58;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .flysmart-result-panel > .empty,
+        .flysmart-result-panel > .error {
+            margin: 0;
+            border-radius: 0;
+            background: #404040;
+            color: #59ff58;
         }
 
         .performance-warnings {
@@ -2275,6 +3227,100 @@
 
             .performance-tabs {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .flysmart-workbench {
+                grid-template-columns: 1fr;
+            }
+
+            .flysmart-side-panel {
+                border-right: 0;
+                border-bottom: 3px solid #252525;
+            }
+
+            .flysmart-title {
+                font-size: 19px;
+            }
+
+            .flysmart-output-grid {
+                grid-template-columns: 1fr;
+                gap: 14px;
+                padding: 18px 12px;
+            }
+
+            .flysmart-landing-stage {
+                grid-template-columns: 1fr;
+                min-height: 0;
+                gap: 14px;
+                padding: 14px 10px;
+            }
+
+            .flysmart-landing-topbar {
+                min-height: 44px;
+                font-size: 18px;
+            }
+
+            .flysmart-landing-topbar span {
+                padding: 0 10px;
+            }
+
+            .flysmart-landing-message.muted {
+                grid-column: auto;
+            }
+
+            .flysmart-runway-panel.landing {
+                justify-self: center;
+                padding-right: 0;
+            }
+
+            .flysmart-runway-panel.landing .flysmart-runway {
+                height: 300px;
+            }
+
+            .flysmart-wind-arrow {
+                right: 112px;
+                top: 58px;
+            }
+
+            .flysmart-strip-title {
+                min-height: 40px;
+                padding: 0 14px;
+                font-size: 18px;
+            }
+
+            .flysmart-runway {
+                height: 250px;
+            }
+
+            .loadsheet-results {
+                padding: 12px;
+            }
+
+            .loadsheet-underload {
+                min-height: 48px;
+                font-size: 18px;
+            }
+
+            .loadsheet-line {
+                min-height: 46px;
+                grid-template-columns: minmax(104px, 0.85fr) minmax(0, 1fr);
+                padding: 0 12px;
+            }
+
+            .loadsheet-line span,
+            .loadsheet-line strong {
+                font-size: 16px;
+            }
+
+            .loadsheet-table-head,
+            .loadsheet-table-row {
+                grid-template-columns: minmax(120px, 1fr) minmax(76px, 0.7fr) minmax(62px, 0.55fr);
+            }
+
+            .loadsheet-table-head,
+            .loadsheet-table-row,
+            .loadsheet-trim {
+                font-size: 16px;
             }
 
             .performance-result-row {
