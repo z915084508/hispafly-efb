@@ -1462,6 +1462,13 @@
         .performance-shell {
             display: grid;
             gap: 14px;
+            padding: 12px;
+            border: 1px solid rgba(0,0,0,0.42);
+            border-radius: 8px;
+            background:
+                linear-gradient(90deg, rgba(255,255,255,0.12), rgba(0,0,0,0.08)),
+                repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 1px, rgba(0,0,0,0.035) 1px 3px),
+                #8f908e;
         }
 
         .performance-banner {
@@ -1469,22 +1476,28 @@
             align-items: center;
             justify-content: space-between;
             gap: 16px;
-            border: 1px solid rgba(255,255,255,0.14);
-            border-radius: 16px;
-            padding: 16px;
-            background: rgba(0,0,0,0.28);
+            min-height: 54px;
+            border: 1px solid rgba(0,0,0,0.26);
+            border-radius: 5px;
+            padding: 8px 16px;
+            background: linear-gradient(#f5f5f5, #c4c8cc);
+            color: #43515d;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.72);
         }
 
         .performance-banner strong {
             display: block;
+            color: #43515d;
             font-size: 24px;
+            font-weight: 900;
             line-height: 1.12;
+            text-transform: uppercase;
         }
 
         .performance-banner small,
         .performance-kicker {
             display: block;
-            color: var(--muted);
+            color: #66707a;
             font-size: 12px;
             font-weight: 800;
             text-transform: uppercase;
@@ -1493,25 +1506,36 @@
         .performance-tabs {
             display: grid;
             grid-template-columns: repeat(5, minmax(0, 1fr));
-            gap: 8px;
+            gap: 0;
+            border: 1px solid rgba(0,0,0,0.32);
+            border-radius: 6px;
+            overflow: hidden;
+            background: linear-gradient(#f4f4f5, #c3c8cd);
         }
 
         .performance-tab {
-            min-height: 42px;
-            border: 1px solid rgba(255,255,255,0.14);
-            border-radius: 12px;
-            background: rgba(0,0,0,0.24);
-            color: rgba(255,255,255,0.72);
+            min-height: 44px;
+            border: 0;
+            border-right: 1px solid rgba(0,0,0,0.24);
+            border-radius: 0;
+            background: transparent;
+            color: #46515b;
             cursor: pointer;
-            font-size: 12px;
-            font-weight: 800;
+            font-size: 13px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .performance-tab:last-child {
+            border-right: 0;
         }
 
         .performance-tab.active,
         .performance-tab:hover {
-            border-color: rgba(255,196,0,0.44);
-            background: rgba(255,196,0,0.10);
+            border-color: transparent;
+            background: linear-gradient(#58bce4, #238fc1);
             color: #fff;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.45);
         }
 
         .performance-workbench {
@@ -1672,6 +1696,10 @@
             color: #59ff58;
             font-size: 15px;
             letter-spacing: 0;
+        }
+
+        .flysmart-takeoff-topbar {
+            min-height: 50px;
         }
 
         .flysmart-main-panel {

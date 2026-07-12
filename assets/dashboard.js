@@ -29,7 +29,6 @@
         let performanceLoadsheetError = "";
         const performanceWeatherCache = new Map();
         const performanceWeatherLoading = new Map();
-
         if (!accessToken) {
             window.location.href = "index.html";
         }
@@ -1238,14 +1237,28 @@
                             ${performanceModeNotice()}
                             ${performanceWeatherNotice("takeoff")}
                         </div>
-                        <button class="primary-btn flysmart-compute-btn" id="calculateTakeoffBtn">COMPUTE TAKEOFF</button>
+                        <div class="flysmart-status-buttons">
+                            <span>MEL 0</span><span>CDL 0</span><span>ECAM 0</span>
+                        </div>
+                        <div class="flysmart-action-row">
+                            <button class="inline-btn" type="button">CLEAR</button>
+                            <button class="primary-btn flysmart-compute-btn" id="calculateTakeoffBtn">COMPUTE</button>
+                        </div>
                     </section>
                     <section class="flysmart-main-panel">
+                        <div class="flysmart-landing-topbar flysmart-takeoff-topbar">
+                            <span>TAKEOFF</span>
+                            <span>${escapeHtml(flight.aircraftRegistration || "A-DEMO")}</span>
+                            <span>${escapeHtml(aircraft)}</span>
+                        </div>
                         <div class="flysmart-strip-title">${escapeHtml(runway)} - FULL LENGTH</div>
                         <div class="flysmart-output-grid">
                             <div id="takeoffResult" class="flysmart-result-panel">${renderTakeoffResult()}</div>
                             ${renderFlysmartProcedurePanel("takeoff")}
                             ${renderFlysmartRunwayPanel("takeoff", runway)}
+                        </div>
+                        <div class="flysmart-bottom-nav" aria-hidden="true">
+                            <span>▣</span><span class="active">▱</span><span>▰</span><span>▤</span><span>✈</span><span>⚙</span>
                         </div>
                     </section>
                 </div>
