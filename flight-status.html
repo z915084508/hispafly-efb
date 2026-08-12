@@ -361,8 +361,7 @@
 
     <script src="assets/reference-data.js"></script>
     <script>
-        const API_ROOT = "https://vamsys.io/api/v3/pilot";
-        const accessToken = localStorage.getItem("vamsys_token");
+        const API_ROOT = "/api/aoc-proxy";
         const params = new URLSearchParams(window.location.search);
         const initialPirepId = params.get("pirep");
         const embeddedMode = params.get("embedded") === "1";
@@ -371,14 +370,7 @@
         let map = null;
         let routeLayer = null;
 
-        if (!accessToken) {
-            window.location.href = "index.html";
-        }
-
-        const authHeader = {
-            "Authorization": `Bearer ${accessToken}`,
-            "Accept": "application/json"
-        };
+        const authHeader = { "Accept": "application/json" };
 
         window.addEventListener("DOMContentLoaded", () => {
             if (embeddedMode) document.body.classList.add("embedded");
@@ -399,14 +391,15 @@
         }
 
         async function fetchPilotJson(path, params = {}) {
-            const url = new URL(`${API_ROOT}${path}`);
+            const url = new URL(API_ROOT, window.location.origin);
+            url.searchParams.set("path", `/api/efb/pilot${path}`);
             Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
             const res = await fetch(url, { headers: authHeader });
             const text = await res.text();
             const json = text ? JSON.parse(text) : { data: null };
             if (!res.ok) {
                 const msg = json.message || json.error || JSON.stringify(json).slice(0, 180);
-                throw new Error(`VAMSYS ${path} failed (HTTP ${res.status}): ${msg}`);
+                throw new Error(`HISPAFLY AOC ${path} failed (HTTP ${res.status}): ${msg}`);
             }
             return json;
         }
@@ -481,7 +474,7 @@
             }
 
             if (valid.length < 2) {
-                document.getElementById("statusText").textContent = "No latitude/longitude position reports were returned. vAMSYS profile data can still support altitude and speed charts, but not a route map.";
+                document.getElementById("statusText").textContent = "No latitude/longitude position reports were returned. HISPAFLY AOC profile data can still support altitude and speed charts, but not a route map.";
                 updateStats(id, valid, profile);
                 return;
             }
@@ -493,7 +486,7 @@
                 L.circleMarker(latLngs[latLngs.length - 1], { radius: 7, color: "#ff6b6b", fillColor: "#ff6b6b", fillOpacity: 1 }).bindTooltip("ARR")
             ]).addTo(map);
             map.fitBounds(L.latLngBounds(latLngs), { padding: [42, 42], maxZoom: 9 });
-            document.getElementById("statusText").textContent = "Recorded position reports loaded. This uses vAMSYS PIREP data, not a confirmed live tracking endpoint.";
+            document.getElementById("statusText").textContent = "Recorded position reports loaded. This uses HISPAFLY AOC PIREP data, not a confirmed live tracking endpoint.";
             updateStats(id, valid, profile);
         }
 

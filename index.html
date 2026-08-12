@@ -358,9 +358,14 @@
                     <h1 class="mobile-title">HISPAFLY</h1>
                     <p class="subtitle">Electronic Flight Bag</p>
                     <div class="accent" aria-hidden="true"></div>
-                    <button class="login-btn" id="loginBtn">Login with VAMSYS</button>
+                    <form id="loginForm" style="width:min(360px,88vw);display:grid;gap:10px;">
+                        <input class="login-btn" id="email" type="email" autocomplete="username" placeholder="AOC email" required style="text-align:left;background:#fff;color:#10243e;">
+                        <input class="login-btn" id="password" type="password" autocomplete="current-password" placeholder="Password" required style="text-align:left;background:#fff;color:#10243e;">
+                        <button class="login-btn" id="loginBtn" type="submit">LOGIN WITH HISPAFLY AOC</button>
+                        <p id="loginError" role="alert" style="display:none;color:#ffb4b4;margin:0;"></p>
+                    </form>
                     <div class="footer-note">
-                        Pilot access powered by VAMSYS ·
+                        Pilot access managed by HISPAFLY AOC ·
                         <a href="privacy-policy.html">Privacy</a> ·
                         <a href="intellectual-property.html">IP Notice</a>
                     </div>
@@ -370,11 +375,6 @@
     </main>
 
     <script>
-        const CLIENT_ID = "909";
-        const REDIRECT_URI = "https://hispafly-efb.vercel.app/efb-callback.html";
-        const VAMSYS_AUTH_ENDPOINT = "https://vamsys.io/oauth/authorize";
-        const SCOPE_LIST = "identity:basic identity:networks pilot:read pilot:write flights:read";
-
         function updateUtcTime() {
             const now = new Date();
             const hours = String(now.getUTCHours()).padStart(2, "0");
@@ -385,50 +385,22 @@
         updateUtcTime();
         setInterval(updateUtcTime, 30000);
 
-        function generateState() {
-            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-            let state = "";
-            for (let i = 0; i < 32; i++) state += chars[Math.floor(Math.random() * chars.length)];
-            return state;
-        }
-
-        function generateCodeVerifier() {
-            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
-            let verifier = "";
-            for (let i = 0; i < 64; i++) verifier += chars[Math.floor(Math.random() * chars.length)];
-            return verifier;
-        }
-
-        async function generateCodeChallenge(verifier) {
-            const encoder = new TextEncoder();
-            const bytes = encoder.encode(verifier);
-            const sha256 = await crypto.subtle.digest("SHA-256", bytes);
-            return btoa(String.fromCharCode(...new Uint8Array(sha256)))
-                .replace(/\+/g, "-")
-                .replace(/\//g, "_")
-                .replace(/=/g, "");
-        }
-
-        document.getElementById("loginBtn").addEventListener("click", async () => {
-            const state = generateState();
-            const verifier = generateCodeVerifier();
-            sessionStorage.setItem("pkce_s", state);
-            localStorage.setItem("pkce_s", state);
-            sessionStorage.setItem("pkce_v", verifier);
-            localStorage.setItem("pkce_v", verifier);
-            sessionStorage.setItem("oauth_redirect_uri", REDIRECT_URI);
-            localStorage.setItem("oauth_redirect_uri", REDIRECT_URI);
-
-            const params = new URLSearchParams({
-                response_type: "code",
-                client_id: CLIENT_ID,
-                redirect_uri: REDIRECT_URI,
-                scope: SCOPE_LIST,
-                state: state,
-                code_challenge: await generateCodeChallenge(verifier),
-                code_challenge_method: "S256"
-            });
-            window.location.href = `${VAMSYS_AUTH_ENDPOINT}?${params.toString()}`;
+        document.getElementById("loginForm").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const button = document.getElementById("loginBtn");
+            const error = document.getElementById("loginError");
+            button.disabled = true;
+            error.style.display = "none";
+            try {
+                const response = await fetch("/api/aoc-proxy?path=/api/auth/local/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: document.getElementById("email").value, password: document.getElementById("password").value }) });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.error === "invalid_credentials" ? "Email or password is incorrect." : (data.message || "AOC login is unavailable."));
+                window.location.href = "dashboard.html";
+            } catch (reason) {
+                error.textContent = reason.message;
+                error.style.display = "block";
+                button.disabled = false;
+            }
         });
     </script>
 </body>

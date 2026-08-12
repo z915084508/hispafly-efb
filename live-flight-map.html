@@ -253,7 +253,7 @@
             <div>
                 <div class="eyebrow">Live Ops</div>
                 <h1>Live Flight Map</h1>
-                <p class="muted" id="statusText">Loading active VAMSYS flights...</p>
+                <p class="muted" id="statusText">Loading active HISPAFLY AOC flights...</p>
             </div>
             <button class="refresh" id="refreshBtn">REFRESH</button>
         </div>
@@ -315,7 +315,7 @@
         }
 
         async function loadLiveFlights(silent) {
-            if (!silent) document.getElementById("statusText").textContent = "Loading active VAMSYS flights...";
+            if (!silent) document.getElementById("statusText").textContent = "Loading active HISPAFLY AOC flights...";
             try {
                 const res = await fetch("/api/flight-map?include_posreps=true");
                 const json = await res.json();
@@ -385,7 +385,7 @@
 
             const now = new Date();
             document.getElementById("statusText").textContent = mapped.length
-                ? "Live VAMSYS active flight positions loaded."
+                ? "Live HISPAFLY AOC active flight positions loaded."
                 : "Active flights loaded, but no usable coordinates were returned.";
             document.getElementById("statActive").textContent = String(flights.length);
             document.getElementById("statMapped").textContent = String(mapped.length);
@@ -398,7 +398,7 @@
             const list = document.getElementById("activeFlightList");
             document.getElementById("flightListCount").textContent = `${flights.length} flight${flights.length === 1 ? "" : "s"}`;
             if (!flights.length) {
-                list.innerHTML = `<p class="muted">No active VAMSYS flights were returned.</p>`;
+                list.innerHTML = `<p class="muted">No active HISPAFLY AOC flights were returned.</p>`;
                 return;
             }
 

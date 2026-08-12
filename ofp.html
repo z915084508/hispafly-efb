@@ -424,7 +424,7 @@
                     <input id="dispatchIdInput" autocomplete="off" placeholder="Paste SimBrief dispatch ID">
                 </div>
                 <button class="attach" id="attachBtn">ATTACH OFP</button>
-                <p class="muted">If vAMSYS returns pdf_url, this page displays the PDF directly.</p>
+                <p class="muted">If HISPAFLY AOC returns pdf_url, this page displays the PDF directly.</p>
             </aside>
 
             <section class="main">
@@ -451,8 +451,7 @@
     <script src="assets/reference-data.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" referrerpolicy="no-referrer"></script>
     <script>
-        const API_ROOT = "https://vamsys.io/api/v3/pilot";
-        const accessToken = localStorage.getItem("vamsys_token");
+        const API_ROOT = "/api/aoc-proxy";
         const bookingId = new URLSearchParams(window.location.search).get("booking");
         const signatureLayers = new Map();
         let signatureStrokes = [];
@@ -461,13 +460,9 @@
         let signedAt = null;
         let signerName = "HISPAFLY Pilot";
 
-        if (!accessToken) window.location.href = "index.html";
         if (!bookingId) window.location.href = "dashboard.html";
 
-        const authHeader = {
-            "Authorization": `Bearer ${accessToken}`,
-            "Accept": "application/json"
-        };
+        const authHeader = { "Accept": "application/json" };
 
         window.addEventListener("DOMContentLoaded", () => {
             updateUtcTime();
@@ -484,7 +479,8 @@
         }
 
         async function fetchPilotJson(path, params = {}, options = {}) {
-            const url = new URL(`${API_ROOT}${path}`);
+            const url = new URL(API_ROOT, window.location.origin);
+            url.searchParams.set("path", `/api/efb/pilot${path}`);
             Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
             const res = await fetch(url, {
                 method: options.method || "GET",
@@ -498,7 +494,7 @@
             const json = text ? JSON.parse(text) : { data: null };
             if (!res.ok) {
                 const msg = json.message || json.error || JSON.stringify(json).slice(0, 180);
-                throw new Error(`VAMSYS ${path} failed (HTTP ${res.status}): ${msg}`);
+                throw new Error(`HISPAFLY AOC ${path} failed (HTTP ${res.status}): ${msg}`);
             }
             return json;
         }
@@ -567,7 +563,7 @@
                 if (!window.pdfjsLib) throw new Error("The embedded PDF viewer could not be loaded.");
                 window.pdfjsLib.GlobalWorkerOptions.workerSrc =
                     "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-                const source = `/api/pdf-proxy?url=${encodeURIComponent(pdfUrl)}`;
+                const source = String(pdfUrl).startsWith("/") ? pdfUrl : `/api/pdf-proxy?url=${encodeURIComponent(pdfUrl)}`;
                 const pdf = await window.pdfjsLib.getDocument(source).promise;
                 const documentHost = document.createElement("div");
                 documentHost.className = "pdf-document";

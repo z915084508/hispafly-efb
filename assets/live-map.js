@@ -458,7 +458,7 @@ function renderLiveMapEmptyState(mappedCount) {
     empty.className = "live-map-empty";
     empty.innerHTML = `
         <strong>No live coordinates yet</strong>
-        <span>${liveMapFlights.length} active flight loaded, but VAMSYS did not return usable latitude/longitude for it.</span>
+        <span>${liveMapFlights.length} active flight loaded, but HISPAFLY AOC did not return usable latitude/longitude for it.</span>
     `;
     canvas.appendChild(empty);
 }
@@ -475,7 +475,7 @@ function renderLiveMapPopup(flight) {
 function renderLiveMapList() {
     const list = document.getElementById("liveMapList");
     if (!liveMapFlights.length) {
-        list.innerHTML = `<p class="empty">No active VAMSYS flights were returned.</p>`;
+        list.innerHTML = `<p class="empty">No active HISPAFLY AOC flights were returned.</p>`;
         return;
     }
 

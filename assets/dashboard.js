@@ -1,5 +1,5 @@
-﻿const API_ROOT = "https://vamsys.io/api/v3/pilot";
-        let accessToken = localStorage.getItem("vamsys_token");
+﻿const API_ROOT = "/api/aoc-proxy";
+        const API_SOURCE = "HISPAFLY_AOC";
         let currentView = "home";
         let pilotData = null;
         let profileData = null;
@@ -18,7 +18,7 @@
         let abbreviationLoadPromise = null;
         let checklistPhaseId = null;
         let checklistAircraftId = localStorage.getItem("hispafly_checklist_aircraft") || "b737-800";
-        const AOC_API_BASE_URL = (window.NEXT_PUBLIC_AOC_API_BASE_URL || window.HISPAFLY_AOC_API_BASE_URL || "https://aoc.hispafly.es").replace(/\/$/, "");
+        const AOC_API_BASE_URL = "/api/aoc-proxy";
         let performanceActiveFlight = null;
         let performanceHistory = null;
         let performanceTab = "flight";
@@ -29,12 +29,7 @@
         let performanceLoadsheetError = "";
         const performanceWeatherCache = new Map();
         const performanceWeatherLoading = new Map();
-        if (!accessToken) {
-            window.location.href = "index.html";
-        }
-
         const authHeader = {
-            "Authorization": `Bearer ${accessToken}`,
             "Accept": "application/json"
         };
 
@@ -65,7 +60,7 @@
             },
             { view: "telex", label: "TELEX", subhead: "Hoppie ACARS", icon: "assets/app-icons/telex.png" },
             { view: "cdmAirport", label: "CDM Airport", subhead: "Airport queue", icon: "assets/app-icons/cdm-airport.png" },
-            { view: "liveMap", label: "Live Map", subhead: "VAMSYS live ops", icon: "assets/app-icons/live-map.png" }
+            { view: "liveMap", label: "Live Map", subhead: "HISPAFLY AOC live ops", icon: "assets/app-icons/live-map.png" }
         ];
 
         window.addEventListener("DOMContentLoaded", () => {
@@ -124,7 +119,7 @@
                 windy: ["Weather", "WINDY Radar", "Interactive weather radar and forecast layers."],
                 telex: ["ACARS", "TELEX", "Hoppie ACARS style logon, inbox, and telex compose station."],
                 cdmAirport: ["Airport CDM", "CDM Airport Status", "Airport departure queue and ATFCM status."],
-                liveMap: ["Live Ops", "Live Flight Map", "Real-time VAMSYS active flight positions."],
+                liveMap: ["Live Ops", "Live Flight Map", "Real-time HISPAFLY AOC flight positions."],
                 checklist: ["Flight Deck", "CHECKLIST", "Interactive phase checklists with automatic local progress saving."],
                 performance: ["Performance", "EFB Performance", "Official and manual takeoff or landing calculations."]
             }[view];
@@ -294,7 +289,8 @@
         }
 
         function buildApiUrl(path, params = {}) {
-            const url = new URL(`${API_ROOT}${path}`);
+            const url = new URL("/api/aoc-proxy", window.location.origin);
+            url.searchParams.set("path", `/api/efb/pilot${path}`);
             Object.entries(params).forEach(([key, value]) => {
                 if (value !== undefined && value !== null && value !== "") {
                     url.searchParams.set(key, value);
@@ -324,12 +320,13 @@
                 json = text ? JSON.parse(text) : { data: null };
             } catch (err) {
                 const preview = text.replace(/\s+/g, " ").slice(0, 180) || "empty response";
-                throw new Error(`VAMSYS returned non-JSON for ${path} (HTTP ${res.status}): ${preview}`);
+                throw new Error(`HISPAFLY AOC returned non-JSON for ${path} (HTTP ${res.status}): ${preview}`);
             }
 
             if (!res.ok) {
                 const msg = json.message || json.error || JSON.stringify(json).slice(0, 180);
-                throw new Error(`VAMSYS ${path} failed (HTTP ${res.status}): ${msg}`);
+                if (res.status === 401) window.location.href = "index.html";
+                throw new Error(`HISPAFLY AOC ${path} failed (HTTP ${res.status}): ${msg}`);
             }
 
             return json;
@@ -724,12 +721,11 @@
         async function fetchPerformanceJson(path, options = {}) {
             let res;
             try {
-                res = await fetch(`${AOC_API_BASE_URL}/api/efb/performance${path}`, {
+                res = await fetch(`${AOC_API_BASE_URL}?path=${encodeURIComponent(`/api/efb/performance${path}`)}`, {
                     method: options.method || "GET",
                     credentials: "include",
                     headers: {
                         "Accept": "application/json",
-                        ...(accessToken ? { "Authorization": `Bearer ${accessToken}` } : {}),
                         ...(options.body ? { "Content-Type": "application/json" } : {})
                     },
                     body: options.body ? JSON.stringify(options.body) : undefined
@@ -775,12 +771,12 @@
             const flight = performanceActiveFlight || {};
             performanceLoadsheetError = "";
             try {
-                if (!flight.active || !flight.vamsysBookingId) {
+                if (!flight.active || !flight.bookingId) {
                     performanceLoadsheetData = buildLoadsheetModel(null, flight);
                     performanceLoadsheetError = "No active SimBrief-linked booking. Manual loadsheet preview is available.";
                     return performanceLoadsheetData;
                 }
-                const json = await fetchPilotJson(`/bookings/${flight.vamsysBookingId}/simbrief`);
+                const json = await fetchPilotJson(`/bookings/${flight.bookingId}/simbrief`);
                 performanceLoadsheetData = buildLoadsheetModel(json.data || json, flight);
                 return performanceLoadsheetData;
             } catch (err) {
@@ -872,7 +868,7 @@
                 ["Registration", flight.aircraftRegistration],
                 ["OFP status", flight.ofpStatus],
                 ["Dispatch status", flight.dispatchStatus],
-                ["vAMSYS booking ID", flight.vamsysBookingId],
+                ["AOC booking ID", flight.bookingId],
                 ["Takeoff weight", formatWeight(flight.takeoffWeightKg)],
                 ["Landing weight", formatWeight(flight.landingWeightKg)],
                 ["Ready for Departure", flight.readyForDepartureStatus]
@@ -2984,14 +2980,9 @@
                 .replace(/'/g, "&#039;");
         }
 
-        function logout() {
-            localStorage.removeItem("vamsys_token");
-            sessionStorage.removeItem("pkce_v");
-            sessionStorage.removeItem("pkce_s");
-            sessionStorage.removeItem("oauth_redirect_uri");
-            localStorage.removeItem("pkce_v");
-            localStorage.removeItem("pkce_s");
-            localStorage.removeItem("oauth_redirect_uri");
+        async function logout() {
+            try { await fetch("/api/aoc-proxy?path=/api/auth/local/logout", { method: "POST" }); } catch (_) {}
+            localStorage.removeItem("legacy_pilot_token");
             window.location.href = "index.html";
         }
 
