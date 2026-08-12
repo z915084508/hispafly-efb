@@ -531,6 +531,9 @@
                 ["VATSIM ID", networks.vatsim_id || u.vatsim_id],
                 ["IVAO ID", networks.ivao_id || u.ivao_id],
                 ["Pilot ID", profileData?.id || u.pilot?.id || u.id || u.pilot_id],
+                ["Pilot Hub", profileData?.hub || profileData?.hub_id || profileData?.base],
+                ["Current Location", profileData?.current_airport || profileData?.location],
+                ["Wallet", formatWalletBalance(profileData?.wallet_balance_cents, profileData?.wallet_currency)],
                 ["Total Flight Time", getFlightTime()],
                 ["Current Rank", getRank()]
             ];
@@ -2335,6 +2338,9 @@
                     <div class="meta">
                         <span>From: ${escapeHtml(formatAirport(pirep, "departure"))}</span>
                         <span>To: ${escapeHtml(formatAirport(pirep, "arrival"))}</span>
+                        <span>Aircraft: ${escapeHtml(formatAircraft(pirep))}</span>
+                        <span>Flight time: ${escapeHtml(formatMinutes(pirep.flight_time_minutes ?? pirep.flight_time))}</span>
+                        <span>Landing: ${escapeHtml(formatLandingRate(pirep.landing_rate))}</span>
                         <span>ID: ${escapeHtml(formatValue(pirep.id))}</span>
                     </div>
                 </button>
@@ -2540,9 +2546,15 @@
                 ["Route", formatRoute(data)],
                 ["Altitude", data.altitude],
                 ["Distance", data.distance],
-                ["Flight Time", data.flight_time],
+                ["Flight Time", formatMinutes(data.flight_time_minutes ?? data.flight_time)],
+                ["Block Time", formatMinutes(data.block_time_minutes)],
+                ["Distance", data.distance_nm ?? data.distance],
                 ["Landing Rate", data.landing_rate],
                 ["Fuel Used", data.fuel_used],
+                ["Passengers", data.passengers],
+                ["Cargo", data.cargo_kg == null ? null : `${data.cargo_kg} kg`],
+                ["Score", data.score],
+                ["Flown At", data.flown_at],
                 ["PIREP ID", data.pirep_id || data.id],
                 ["Booking ID", data.booking_id]
             ].filter(([, value]) => value !== undefined && value !== null && value !== "" && value !== "N/A");
@@ -2682,6 +2694,7 @@
             ];
             for (const key of objectKeys) {
                 const obj = data?.[key];
+                if (typeof obj === "string" && obj.trim()) return obj.trim().toUpperCase();
                 const code = obj?.icao || obj?.icao_code || obj?.iata || obj?.identifier || obj?.code;
                 if (code) return code;
             }
@@ -2693,6 +2706,24 @@
                 return airport.icao || airport.iata || `Airport #${airport.id}`;
             }
             return id ? `Airport #${id}` : "N/A";
+        }
+
+        function formatWalletBalance(cents, currency = "EUR") {
+            const amount = Number(cents);
+            if (!Number.isFinite(amount)) return "N/A";
+            try { return new Intl.NumberFormat(undefined, { style: "currency", currency: currency || "EUR" }).format(amount / 100); }
+            catch (_) { return `${(amount / 100).toFixed(2)} ${currency || "EUR"}`; }
+        }
+
+        function formatMinutes(value) {
+            const minutes = Number(value);
+            if (!Number.isFinite(minutes)) return "N/A";
+            return `${Math.floor(minutes / 60)}h ${String(Math.round(minutes % 60)).padStart(2, "0")}m`;
+        }
+
+        function formatLandingRate(value) {
+            const rate = Number(value);
+            return Number.isFinite(rate) ? `${rate} ft/min` : "N/A";
         }
 
         function formatAircraft(data) {
