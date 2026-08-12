@@ -1,4 +1,5 @@
 const DEFAULT_AOC_ORIGIN = "https://aoc.hispafly.es";
+const PDF_REDIRECT_HOSTS = ["simbrief.com", "navigraph.com", "cloudfront.net"];
 const AOC_ROUTE_RULES = [
   { pattern: /^\/api\/auth\/local\/(?:login|logout)$/, methods: new Set(["POST"]) },
   { pattern: /^\/api\/auth\/local\/me$/, methods: new Set(["GET"]) },
@@ -19,6 +20,15 @@ export function isAllowedAocPath(path, method = "GET") {
   catch { return false; }
 }
 
+export function isAllowedPdfRedirect(url, origin = aocOrigin()) {
+  let target;
+  try { target = new URL(url); } catch { return false; }
+  if (target.protocol !== "https:" || target.username || target.password) return false;
+  if (target.origin === origin) return isAllowedAocPath(`${target.pathname}${target.search}`, "GET");
+  const host = target.hostname.toLowerCase();
+  return PDF_REDIRECT_HOSTS.some((allowed) => host === allowed || host.endsWith(`.${allowed}`));
+}
+
 function aocOrigin() {
   const value = process.env.HISPAFLY_AOC_API_BASE_URL || DEFAULT_AOC_ORIGIN;
   const url = new URL(value);
@@ -36,20 +46,37 @@ export default async function handler(req, res) {
     for (const [key, value] of Object.entries(req.query)) {
       if (key !== "path" && typeof value === "string") target.searchParams.set(key, value);
     }
-    const headers = { Accept: "application/json", "User-Agent": req.headers["user-agent"] || "HISPAFLY-EFB" };
+    const isPdfRequest = /^\/api\/ofp\/[a-z0-9_-]+\/pdf$/i.test(target.pathname) && req.method === "GET";
+    const headers = { Accept: isPdfRequest ? "application/pdf,*/*;q=0.8" : "application/json", "User-Agent": req.headers["user-agent"] || "HISPAFLY-EFB" };
     if (req.headers.cookie) headers.Cookie = req.headers.cookie;
     if (req.body && req.method !== "GET" && req.method !== "HEAD") headers["Content-Type"] = "application/json";
-    const upstream = await fetch(target, {
-      method: req.method,
-      headers,
-      body: req.body && req.method !== "GET" && req.method !== "HEAD" ? JSON.stringify(req.body) : undefined,
-      redirect: "manual",
-    });
+    let upstream;
+    let currentTarget = target;
+    for (let redirects = 0; redirects <= (isPdfRequest ? 4 : 0); redirects += 1) {
+      upstream = await fetch(currentTarget, {
+        method: req.method,
+        headers,
+        body: req.body && req.method !== "GET" && req.method !== "HEAD" ? JSON.stringify(req.body) : undefined,
+        redirect: "manual",
+      });
+      if (!isPdfRequest || ![301, 302, 303, 307, 308].includes(upstream.status)) break;
+      const location = upstream.headers.get("location");
+      if (!location) throw new Error("The AOC PDF endpoint returned an empty redirect.");
+      const nextTarget = new URL(location, currentTarget);
+      if (!isAllowedPdfRedirect(nextTarget.toString())) throw new Error("The AOC PDF endpoint redirected to an unapproved host.");
+      if (nextTarget.origin !== aocOrigin()) delete headers.Cookie;
+      currentTarget = nextTarget;
+    }
+    if (!upstream) throw new Error("The AOC request did not return a response.");
     const setCookie = upstream.headers.get("set-cookie");
     if (setCookie) res.setHeader("Set-Cookie", setCookie.replace(/;\s*Domain=[^;]+/gi, ""));
     res.status(upstream.status);
     const type = upstream.headers.get("content-type") || "application/json; charset=utf-8";
     res.setHeader("Content-Type", type);
+    if (isPdfRequest && type.toLowerCase().includes("application/pdf")) {
+      res.setHeader("Content-Disposition", "inline; filename=\"simbrief-ofp.pdf\"");
+      res.setHeader("Cache-Control", "private, max-age=300");
+    }
     return res.send(Buffer.from(await upstream.arrayBuffer()));
   } catch (error) {
     console.error("[AOC proxy]", error);
