@@ -6,6 +6,8 @@
         let rankData = null;
         let statisticsData = null;
         let bookingsData = null;
+        let rosterData = null;
+        let nextFlightData = null;
         let pirepsData = null;
         let claimsData = null;
         let notamsData = null;
@@ -37,6 +39,7 @@
             { view: "notams", label: "NOTAM", subhead: "Operational notices", icon: "assets/app-icons/notams.png" },
             { view: "profile", label: "Pilot Profile", subhead: "Identity and rank", icon: "assets/app-icons/profile.png" },
             { view: "flightCenter", label: "Flight Center", subhead: "Bookings and OFP", icon: "assets/app-icons/flight-center.png" },
+            { view: "roster", label: "My Roster", subhead: "Personal flight calendar", icon: "assets/app-icons/flight-center.png" },
             {
                 folder: "weather",
                 label: "WEATHER",
@@ -89,6 +92,7 @@
             } catch (err) {
                 console.warn("Pilot profile unavailable", err);
             }
+            try { await loadRoster(); } catch (err) { console.warn("AOC roster unavailable", err); }
             await setView(window.HISPAFLY_INITIAL_VIEW || "home");
         }
 
@@ -114,6 +118,7 @@
                 profile: ["Pilot", "Pilot Profile", "Crew identity, network IDs, rank, and flight time."],
                 pirepLogbook: ["Logbook", "PIREP Logbook", "Select a PIREP to open the full pilot report."],
                 flightCenter: ["Flights", "Flight Center", "Current bookings and dispatch documents."],
+                roster: ["My Schedule", "My Roster", "Monthly reservations from the shared AOC roster."],
                 dictionary: ["Pilot Tools", "Terminology Dictionary", "Search VATSIM Spain, phraseology, and safety terms."],
                 weather: ["Weather", "WX Info", "Request weather information by airport ICAO."],
                 windy: ["Weather", "WINDY Radar", "Interactive weather radar and forecast layers."],
@@ -149,6 +154,9 @@
                 } else if (currentView === "flightCenter") {
                     if (!bookingsData || force) bookingsData = await loadBookings();
                     renderFlightCenter();
+                } else if (currentView === "roster") {
+                    if (!rosterData || force) await loadRoster();
+                    renderRoster();
                 } else if (currentView === "dictionary") {
                     await renderDictionary();
                 } else if (currentView === "weather") {
@@ -192,6 +200,7 @@
             const name = buildName(pilotData || {}) || "HISPAFLY Pilot";
             const rank = getRank();
             const apps = dashboardApps.map(renderHomeApp).join("");
+            const nextFlight = nextFlightData ? `<button class="next-flight-card" data-home-view="roster"><span>NEXT FLIGHT</span><strong>${escapeHtml(nextFlightData.flight_number || "Flight")}</strong><b>${escapeHtml(nextFlightData.departure)} → ${escapeHtml(nextFlightData.arrival)}</b><small>${escapeHtml(formatDate(nextFlightData.departure_time))} · ${escapeHtml(nextFlightData.aircraft_registration || "Aircraft TBA")}</small></button>` : `<div class="next-flight-card empty-next"><span>NEXT FLIGHT</span><strong>No future reservation</strong><small>Reserve a PROGRAMACIÓN flight in Pilot Portal.</small></div>`;
 
             document.getElementById("mainPanel").innerHTML = `
                 <section class="home-screen">
@@ -206,6 +215,7 @@
                             <a href="intellectual-property.html">IP Notice</a>
                         </div>
                     </div>
+                    ${nextFlight}
                     <div class="app-grid" aria-label="EFB functions">
                         ${apps}
                     </div>
@@ -719,6 +729,28 @@
                 localStorage.removeItem("hpf_telex_settings");
                 document.getElementById("savedTelexCode").value = "";
             });
+        }
+
+        async function loadRoster() {
+            const now = new Date();
+            const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
+            const to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 2, 1)).toISOString().slice(0, 10);
+            const [roster, next] = await Promise.all([fetchPilotJson("/roster", { from, to }), fetchPilotJson("/next-flight")]);
+            rosterData = roster.data || [];
+            nextFlightData = next.data || null;
+            return rosterData;
+        }
+
+        function renderRoster() {
+            const rows = Array.isArray(rosterData) ? rosterData : [];
+            const now = new Date(), year = now.getUTCFullYear(), month = now.getUTCMonth();
+            const firstOffset = (new Date(Date.UTC(year, month, 1)).getUTCDay() + 6) % 7;
+            const dayCount = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+            const grouped = new Map();
+            rows.filter((flight) => { const date = new Date(flight.departure_time); return date.getUTCFullYear() === year && date.getUTCMonth() === month; }).forEach((flight) => { const day = new Date(flight.departure_time).getUTCDate(); if (!grouped.has(day)) grouped.set(day, []); grouped.get(day).push(flight); });
+            const cells = Array.from({length: Math.ceil((firstOffset + dayCount) / 7) * 7}, (_, index) => { const day=index-firstOffset+1; if(day<1||day>dayCount) return '<div class="roster-cell roster-outside"></div>'; const flights=grouped.get(day)||[]; return `<div class="roster-cell"><span class="roster-day-number">${day}</span>${flights.map((flight) => `<a class="roster-flight" href="ofp.html?booking=${encodeURIComponent(flight.id)}"><strong>${escapeHtml(flight.flight_number || "Flight")}</strong><span>${escapeHtml(flight.departure)} → ${escapeHtml(flight.arrival)}</span><span>${escapeHtml(String(flight.departure_time).slice(11,16))}Z</span><b>${escapeHtml(flight.status)}</b></a>`).join("")}</div>`; }).join("");
+            const title = now.toLocaleDateString(undefined,{month:"long",year:"numeric",timeZone:"UTC"});
+            document.getElementById("mainPanel").innerHTML = `<div class="roster-calendar"><div class="card"><span class="home-kicker">AOC SINGLE SOURCE</span><h2>${escapeHtml(title)}</h2><p>Every item is the same concrete flight reservation shown in Pilot Portal.</p></div><div class="roster-month">${["MON","TUE","WED","THU","FRI","SAT","SUN"].map(day=>`<div class="roster-weekday">${day}</div>`).join("")}${cells}</div>${rows.length ? "" : '<p class="empty">No future roster flights.</p>'}</div>`;
         }
 
         async function fetchPerformanceJson(path, options = {}) {
